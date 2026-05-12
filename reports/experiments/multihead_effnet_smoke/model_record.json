@@ -1,0 +1,27 @@
+{
+  "architecture": "efficientnet_v2_s",
+  "artifact_path": "models/multihead_classifier/best.pt",
+  "created_at": "2026-05-12T07:10:36.032799+00:00",
+  "extra": {
+    "batch": 32,
+    "device": "0",
+    "epochs": 10,
+    "head_sizes": {
+      "family": 4,
+      "finish_material_cue": 5,
+      "mount_style": 9,
+      "orientation": 5,
+      "polarity": 5,
+      "precision_family": 9,
+      "side_a_gender": 7,
+      "side_b_gender": 7,
+      "termination": 6
+    },
+    "imgsz": 384
+  },
+  "metrics_path": "reports/experiments/multihead_effnet_smoke/metrics.json",
+  "model_id": "multihead_classifier_efficientnet_v2_s_2026-05-12_001",
+  "model_type": "multihead_classifier",
+  "taxonomy_version": "c87ddaf7b0e9bbe56a7a2efee62f08744b383ccf7f30575d3286cfde4a85ece7",
+  "trained_on": "datasets/rfconnectors@rfconnectors_2026_05_12_001"
+}

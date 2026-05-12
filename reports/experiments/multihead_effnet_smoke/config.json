@@ -1,0 +1,10 @@
+{
+  "artifact_out": "models/multihead_classifier",
+  "backbone": "efficientnet_v2_s",
+  "batch": 32,
+  "dataset": "datasets/rfconnectors",
+  "device": "0",
+  "epochs": 10,
+  "imgsz": 384,
+  "seq": 1
+}

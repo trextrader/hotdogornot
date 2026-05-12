@@ -1,0 +1,355 @@
+{
+  "history": [
+    {
+      "epoch": 1,
+      "lr": 0.0002909840468074933,
+      "train": {
+        "loss": 0.33214120172903117,
+        "per_head_acc": {
+          "family": 0.890258163173518,
+          "precision_family": 0.9927138616533238,
+          "side_a_gender": 0.8380858145183053,
+          "side_b_gender": 0.9922641000269857,
+          "polarity": 0.9951425744355492,
+          "mount_style": 0.9928038139785913,
+          "orientation": 0.9926239093280561,
+          "termination": 0.9916344337501124,
+          "finish_material_cue": 0.9928038139785913
+        },
+        "n_samples": 11117
+      },
+      "val": {
+        "loss": 0.2896309280589825,
+        "per_head_acc": {
+          "family": 0.9177888022678952,
+          "precision_family": 1.0,
+          "side_a_gender": 0.884479092841956,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 1411
+      },
+      "mean_val_acc": 0.9780297661233168
+    },
+    {
+      "epoch": 2,
+      "lr": 0.0002650236442462872,
+      "train": {
+        "loss": 0.2863942209771611,
+        "per_head_acc": {
+          "family": 0.9291175676891248,
+          "precision_family": 1.0,
+          "side_a_gender": 0.8730772690474049,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 11117
+      },
+      "val": {
+        "loss": 0.28113256444498463,
+        "per_head_acc": {
+          "family": 0.926293408929837,
+          "precision_family": 1.0,
+          "side_a_gender": 0.8972360028348689,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 1411
+      },
+      "mean_val_acc": 0.9803921568627452
+    },
+    {
+      "epoch": 3,
+      "lr": 0.00022525,
+      "train": {
+        "loss": 0.28016304202546016,
+        "per_head_acc": {
+          "family": 0.9383826571916885,
+          "precision_family": 1.0,
+          "side_a_gender": 0.8908878294503912,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 11117
+      },
+      "val": {
+        "loss": 0.278729264403302,
+        "per_head_acc": {
+          "family": 0.9362154500354358,
+          "precision_family": 1.0,
+          "side_a_gender": 0.8993621545003544,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 1411
+      },
+      "mean_val_acc": 0.9817308449484212
+    },
+    {
+      "epoch": 4,
+      "lr": 0.0001764604025612061,
+      "train": {
+        "loss": 0.2764001768693935,
+        "per_head_acc": {
+          "family": 0.9438697490330125,
+          "precision_family": 1.0,
+          "side_a_gender": 0.8995232526760817,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 11117
+      },
+      "val": {
+        "loss": 0.2759431460324456,
+        "per_head_acc": {
+          "family": 0.9390503189227498,
+          "precision_family": 1.0,
+          "side_a_gender": 0.9085754783841248,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 1411
+      },
+      "mean_val_acc": 0.9830695330340973
+    },
+    {
+      "epoch": 5,
+      "lr": 0.00012453959743879392,
+      "train": {
+        "loss": 0.27190179442066165,
+        "per_head_acc": {
+          "family": 0.9511558873796888,
+          "precision_family": 1.0,
+          "side_a_gender": 0.9088782945039129,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 11117
+      },
+      "val": {
+        "loss": 0.2765163881908825,
+        "per_head_acc": {
+          "family": 0.927710843373494,
+          "precision_family": 1.0,
+          "side_a_gender": 0.9078667611622963,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 1411
+      },
+      "mean_val_acc": 0.9817308449484212
+    },
+    {
+      "epoch": 6,
+      "lr": 7.575000000000004e-05,
+      "train": {
+        "loss": 0.26765025691976646,
+        "per_head_acc": {
+          "family": 0.95637312224521,
+          "precision_family": 1.0,
+          "side_a_gender": 0.9244400467752092,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 11117
+      },
+      "val": {
+        "loss": 0.27213056258788604,
+        "per_head_acc": {
+          "family": 0.9312544294826365,
+          "precision_family": 1.0,
+          "side_a_gender": 0.9255846917080085,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 1411
+      },
+      "mean_val_acc": 0.9840932356878496
+    },
+    {
+      "epoch": 7,
+      "lr": 3.597635575371281e-05,
+      "train": {
+        "loss": 0.26290364245389597,
+        "per_head_acc": {
+          "family": 0.9606908338580552,
+          "precision_family": 1.0,
+          "side_a_gender": 0.9406314653233786,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 11117
+      },
+      "val": {
+        "loss": 0.2712463235322843,
+        "per_head_acc": {
+          "family": 0.9369241672572644,
+          "precision_family": 1.0,
+          "side_a_gender": 0.9270021261516654,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 1411
+      },
+      "mean_val_acc": 0.9848806992676589
+    },
+    {
+      "epoch": 8,
+      "lr": 1.001595319250671e-05,
+      "train": {
+        "loss": 0.26009942709547135,
+        "per_head_acc": {
+          "family": 0.966267878024647,
+          "precision_family": 1.0,
+          "side_a_gender": 0.9512458397049564,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 11117
+      },
+      "val": {
+        "loss": 0.2698787674677448,
+        "per_head_acc": {
+          "family": 0.9404677533664068,
+          "precision_family": 1.0,
+          "side_a_gender": 0.9312544294826365,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 1411
+      },
+      "mean_val_acc": 0.9857469092054492
+    },
+    {
+      "epoch": 9,
+      "lr": 1e-06,
+      "train": {
+        "loss": 0.25739331064254695,
+        "per_head_acc": {
+          "family": 0.9706755419627597,
+          "precision_family": 1.0,
+          "side_a_gender": 0.9586219303769002,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 11117
+      },
+      "val": {
+        "loss": 0.26916757246055645,
+        "per_head_acc": {
+          "family": 0.9461374911410347,
+          "precision_family": 1.0,
+          "side_a_gender": 0.9355067328136074,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 1411
+      },
+      "mean_val_acc": 0.9868493582171826
+    },
+    {
+      "epoch": 10,
+      "lr": 1.0015953192506689e-05,
+      "train": {
+        "loss": 0.25672860826274585,
+        "per_head_acc": {
+          "family": 0.9711253035890978,
+          "precision_family": 1.0,
+          "side_a_gender": 0.9611405954843932,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 11117
+      },
+      "val": {
+        "loss": 0.2690752376528347,
+        "per_head_acc": {
+          "family": 0.9468462083628633,
+          "precision_family": 1.0,
+          "side_a_gender": 0.9347980155917789,
+          "side_b_gender": 1.0,
+          "polarity": 1.0,
+          "mount_style": 1.0,
+          "orientation": 1.0,
+          "termination": 1.0,
+          "finish_material_cue": 1.0
+        },
+        "n_samples": 1411
+      },
+      "mean_val_acc": 0.9868493582171826
+    }
+  ],
+  "best_mean_val_acc": 0.9868493582171826
+}
