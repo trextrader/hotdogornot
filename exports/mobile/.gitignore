@@ -1,0 +1,15 @@
+node_modules/
+www/
+*.apk
+*.ipa
+*.aab
+
+# Android build outputs
+android/app/build/
+android/.gradle/
+android/build/
+android/local.properties
+
+# iOS build outputs
+ios/App/Pods/
+ios/DerivedData/

@@ -1,0 +1,31 @@
+{
+  "name": "rf-connector-ai",
+  "version": "1.0.0",
+  "description": "RF Connector AI — On-device identification using ONNX Runtime",
+  "main": "index.js",
+  "scripts": {
+    "sync": "node scripts/copy-web.js && npx cap sync",
+    "android": "npx cap open android",
+    "ios": "npx cap open ios",
+    "build-android": "node scripts/copy-web.js && npx cap sync android"
+  },
+  "keywords": [
+    "rf-connector",
+    "onnx",
+    "ai",
+    "mobile"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/camera": "^7.0.3",
+    "@capacitor/cli": "^7.2.0",
+    "@capacitor/core": "^7.2.0",
+    "@capacitor/ios": "^7.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}
