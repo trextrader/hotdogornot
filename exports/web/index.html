@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RF Connector Identifier</title>
+  <meta name="description" content="Identify RF connectors instantly using AI — works entirely in your browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        <div>
+          <h1>RF Connector AI</h1>
+          <p class="subtitle">Instant identification — runs entirely in your browser</p>
+        </div>
+      </div>
+      <div id="model-status" class="status-badge loading">Loading models…</div>
+    </header>
+
+    <main class="main">
+      <div id="drop-zone" class="drop-zone">
+        <div class="drop-zone-content">
+          <div class="upload-icon">📷</div>
+          <h2>Drop an image or tap to upload</h2>
+          <p>Supports JPG, PNG, WebP — processed locally, never uploaded</p>
+          <div class="button-row">
+            <label class="btn btn-primary" for="file-input">Choose File</label>
+            <button class="btn btn-secondary" id="camera-btn">Use Camera</button>
+          </div>
+          <input type="file" id="file-input" accept="image/*" hidden>
+        </div>
+      </div>
+
+      <div id="results-section" class="results-section hidden">
+        <div class="canvas-wrap">
+          <canvas id="output-canvas"></canvas>
+        </div>
+        <div id="predictions" class="predictions"></div>
+        <button class="btn btn-secondary" id="reset-btn">← Try Another</button>
+      </div>
+    </main>
+
+    <div id="loading-overlay" class="loading-overlay">
+      <div class="spinner"></div>
+      <p id="loading-text">Analyzing…</p>
+    </div>
+
+    <footer class="footer">
+      <p>Models: YOLO11n detector + EfficientNetV2-S classifier · ONNX Runtime Web · No server required</p>
+    </footer>
+  </div>
+
+  <video id="camera-video" autoplay playsinline hidden></video>
+  <div id="camera-modal" class="camera-modal hidden">
+    <video id="camera-preview" autoplay playsinline></video>
+    <div class="camera-controls">
+      <button class="btn btn-primary" id="capture-btn">📸 Capture</button>
+      <button class="btn btn-secondary" id="cancel-camera-btn">Cancel</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
