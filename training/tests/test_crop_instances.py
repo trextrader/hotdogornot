@@ -39,8 +39,18 @@ def labeled_root(tmp_path: Path) -> Path:
 def test_parse_family_from_folder():
     assert parse_family_from_folder("SMA-M") == ("SMA", "male_pin")
     assert parse_family_from_folder("SMA-F") == ("SMA", "female_socket")
-    assert parse_family_from_folder("RP-SMA-RPM") == ("RP", "rp_male_body_female_contact")
+    # RP-SMA-RPM splits trailing gender suffix only; family is "RP-SMA".
+    assert parse_family_from_folder("RP-SMA-RPM") == ("RP-SMA", "rp_male_body_female_contact")
+    assert parse_family_from_folder("RP-SMA-RPF") == ("RP-SMA", "rp_female_body_male_contact")
     assert parse_family_from_folder("BNC") == ("BNC", None)
+
+
+def test_parse_family_preserves_case_for_lowercase_mm():
+    assert parse_family_from_folder("2.4mm-F") == ("2.4mm", "female_socket")
+    assert parse_family_from_folder("2.4mm-M") == ("2.4mm", "male_pin")
+    assert parse_family_from_folder("2.92mm-F") == ("2.92mm", "female_socket")
+    assert parse_family_from_folder("3.5mm-M") == ("3.5mm", "male_pin")
+    assert parse_family_from_folder("1.85mm-F") == ("1.85mm", "female_socket")
 
 
 def test_stable_instance_id_is_deterministic(tmp_path: Path):

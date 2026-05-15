@@ -84,19 +84,34 @@ def stable_instance_id(source: Path, bbox: tuple[int, int, int, int]) -> str:
     return f"inst_{digest}"
 
 
+_GENDER_SUFFIXES = {
+    "M": "male_pin",
+    "F": "female_socket",
+    "RPM": "rp_male_body_female_contact",
+    "RPF": "rp_female_body_male_contact",
+}
+
+
 def parse_family_from_folder(name: str) -> tuple[str, str | None]:
-    """Best-effort family + gender parse from a labeled-folder name like 'SMA-M'."""
-    upper = name.upper()
-    family = upper.split("-")[0] if "-" in upper else upper
-    gender = None
-    if upper.endswith("-M"):
-        gender = "male_pin"
-    elif upper.endswith("-F"):
-        gender = "female_socket"
-    elif upper.endswith("-RPM"):
-        gender = "rp_male_body_female_contact"
-    elif upper.endswith("-RPF"):
-        gender = "rp_female_body_male_contact"
+    """Best-effort family + gender parse from a labeled-folder name.
+
+    The family portion preserves the original case so it stays compatible
+    with the taxonomy YAML, which uses lowercase ``mm`` (e.g. ``2.4mm``,
+    ``2.92mm``). Gender suffix matching is case-insensitive.
+
+    Examples:
+        SMA-M       -> ("SMA", "male_pin")
+        2.4mm-F     -> ("2.4mm", "female_socket")
+        RP-SMA-RPM  -> ("RP-SMA", "rp_male_body_female_contact")
+        BNC         -> ("BNC", None)
+    """
+    parts = name.split("-")
+    if len(parts) >= 2 and parts[-1].upper() in _GENDER_SUFFIXES:
+        gender = _GENDER_SUFFIXES[parts[-1].upper()]
+        family = "-".join(parts[:-1])
+    else:
+        gender = None
+        family = name
     return family, gender
 
 
