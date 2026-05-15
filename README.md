@@ -77,11 +77,20 @@ Client demo entry:
 
 ## Current Baseline
 
-Current production behavior is preserved.
+Production now runs **on-device** with a Capacitor Android shell wrapping
+a WebView that loads the YOLO11n detector and EfficientNetV2-S multi-head
+classifier via ONNX Runtime Web. No server round-trip is required for
+identification.
 
-- Flutter app in `flutter/`
-- FastAPI predict service in `training/rfconnectorai/server/predict_service.py`
-- Existing `/predict` endpoint shape remains:
+| Path | Status | Notes |
+|---|---|---|
+| **Capacitor Android app** (`exports/mobile/`) | **Active production path.** | Pre-built debug APK at `exports/mobile/dist/app-debug.apk` (~87 MB). Smoke-tested on Samsung Galaxy A16 5G. Build steps in [`exports/mobile/README.md`](exports/mobile/README.md). |
+| Browser demo (`exports/web/`) | Active. | Same ONNX models, runs in any modern browser via ONNX Runtime Web. |
+| Capacitor iOS app | Scaffolded, not yet built. | Requires macOS + Xcode. |
+| Flutter app (`flutter/`) | **Legacy.** | Retained for desktop/web parity and the existing camera/contributor UI. Talks to the FastAPI `/predict` service. |
+| FastAPI predict service (`training/rfconnectorai/server/predict_service.py`) | **Legacy / server-fallback.** | The `/predict` JSON shape is preserved as a hard compatibility constraint. |
+
+The legacy `/predict` response shape remains:
 
 ```json
 {
@@ -98,24 +107,19 @@ Current production behavior is preserved.
 }
 ```
 
-Current documented model:
+### Current model
 
-| Metric | v18 Baseline |
-|---|---:|
-| Full class accuracy | 75% |
-| Family accuracy | 75% |
-| Gender accuracy | 87.5% |
-| Background false positives | 0% |
-| Held-out size | 8 phone shots |
+| Metric | YOLO11n detector | EfficientNetV2-S multi-head classifier |
+|---|---:|---:|
+| Headline metric | mAP50-95 = 0.982 | mean val acc = 98.7% |
+| Notes | 5-epoch detector training run | Multi-head: family + gender + mount + polarity |
 
-The current model is an ImageNet-pretrained ResNet-18 with a linear head.
-The 8-image holdout is too small to support strong accuracy claims; one
-miss changes accuracy by 12.5 percentage points.
-
-ResNet-18 is now treated as the baseline and fallback, not the final
-architecture. The model strategy is moving to a multi-architecture pipeline:
-detector plus multi-head classifier plus geometry/spec verification. See
-[`docs/MULTI_ARCHITECTURE_TRANSITION.md`](docs/MULTI_ARCHITECTURE_TRANSITION.md).
+The previous ResNet-18 baseline (`v18`: 75% full-class, 87.5% gender,
+8-image holdout) is retained only as a fallback. The 8-image holdout was
+too small to support strong accuracy claims and is being replaced by the
+new customer-supplied capture set. Full training history and lessons:
+[`docs/MULTI_ARCHITECTURE_TRANSITION.md`](docs/MULTI_ARCHITECTURE_TRANSITION.md),
+[`training/docs/classifier_journey.md`](training/docs/classifier_journey.md).
 
 ---
 
