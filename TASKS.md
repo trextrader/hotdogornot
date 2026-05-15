@@ -605,11 +605,13 @@ API schema and tests must land before any FastAPI handler change. Order:
 ### P0 Tasks
 
 - [x] Create `training/rfconnectorai/export/export_mobile.py`.
-- [ ] Export detector/classifier to ONNX.
-- [ ] Test ONNX Runtime path in cloud/dev environment.
+- [x] Export detector/classifier to ONNX. *(YOLO11n detector + EfficientNetV2-S
+      multi-head classifier exported to `exports/mobile/www/models/`.)*
+- [x] Test ONNX Runtime path in cloud/dev environment. *(Browser demo via
+      `exports/web/` and on-device WebView in the Capacitor Android app.)*
 - [ ] Test TFLite/LiteRT where supported.
 - [ ] Test Core ML where supported.
-- [ ] Document export compatibility.
+- [x] Document export compatibility. *(See `exports/mobile/README.md`.)*
 - [x] Add `exports/mobile/README.md`.
 - [ ] Each exported artifact must reference a `ModelRecord` from
       `training/rfconnectorai/models/registry.py` so mobile/server clients
@@ -617,7 +619,11 @@ API schema and tests must land before any FastAPI handler change. Order:
 
 ### P1 Tasks
 
-- [ ] Integrate Android local inference first.
+- [x] Integrate Android local inference first. *(Capacitor 7.6.4 Android shell
+      bundles `detector.onnx` + `classifier.onnx` and runs ONNX Runtime Web
+      in the WebView. Pre-built debug APK at
+      `exports/mobile/dist/app-debug.apk`. Build instructions and
+      troubleshooting in `exports/mobile/README.md`.)*
 - [ ] Add server fallback setting.
 - [ ] Add model version selection.
 - [ ] Add target-device latency benchmark.
@@ -625,7 +631,10 @@ API schema and tests must land before any FastAPI handler change. Order:
 
 ### Acceptance Criteria
 
-- [ ] At least one local mobile inference path works.
+- [x] At least one local mobile inference path works. *(Verified on Samsung
+      Galaxy A16 5G — detector + classifier run end-to-end on-device with no
+      server. Both file-upload and live-camera input paths work after granting
+      CAMERA permission.)*
 - [ ] Server fallback remains stable.
 - [ ] Desktop app can run or limitation is documented.
 - [ ] Exported model artifacts are versioned.
