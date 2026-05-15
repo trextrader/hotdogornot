@@ -4,6 +4,10 @@ www/
 *.ipa
 *.aab
 
+# Track committed release artifacts in dist/
+!dist/
+!dist/*.apk
+
 # Android build outputs
 android/app/build/
 android/.gradle/

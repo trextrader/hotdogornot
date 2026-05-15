@@ -277,6 +277,23 @@ The app currently provides:
 - About: product info, privacy, request form, dev-mode unlock.
 - Contribute: dev-only training and holdout capture flow.
 
+### Capacitor Mobile App (on-device ONNX)
+
+A second mobile path lives in `exports/mobile/` and runs the
+detector + classifier entirely on-device in a WebView via ONNX Runtime
+Web. A pre-built debug APK is at `exports/mobile/dist/app-debug.apk`.
+
+Quick install on Android:
+
+```bash
+adb install -r exports/mobile/dist/app-debug.apk
+```
+
+Full step-by-step build instructions (JDK 21 setup, Android SDK in a
+writable location, license acceptance, Gradle build, USB install, iOS
+on Mac) are in
+[`exports/mobile/README.md`](exports/mobile/README.md).
+
 ### Diagram Rendering
 
 Graphviz sources are committed so diagrams can be regenerated. See
