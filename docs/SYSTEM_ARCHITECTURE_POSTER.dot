@@ -52,7 +52,7 @@ digraph SystemArchitecturePoster {
       gradientangle=90;
     ];
     flutter [
-      label="Flutter App\nIdentify, Contribute, About\nmobile now / desktop planned";
+      label="Capacitor App (production)\nIdentify, Contribute, About\non-device camera + ONNX";
       shape=component;
       fillcolor="#cfe6ff:#f8fbff";
       gradientangle=90;
@@ -115,23 +115,23 @@ digraph SystemArchitecturePoster {
       gradientangle=90;
     ];
     baseline [
-      label="Current Baseline\nHough crop + rembg gate\nResNet-18 flat classifier";
+      label="Legacy Baseline (fallback)\nHough crop + rembg gate\nResNet-18 flat classifier";
       fillcolor="#d9ecff:#f7fbff";
       gradientangle=90;
     ];
     detector [
-      label="Object Detection Track\nYOLO11n/s, RT-DETR small\nmulti-connector separation";
+      label="Stage 1: Single-Class Detector\nYOLO nc=1 connector localizer\nno family / no gender";
       fillcolor="#fff1cc:#fffaf0";
       gradientangle=90;
     ];
     classifier [
-      label="Fine-Grained Attribute Track\nEfficientNetV2, MobileNetV3,\nMobileViT, ConvNeXt-Tiny,\nResNet baseline comparison";
-      fillcolor="#fff1cc:#fffaf0";
+      label="Stage 2: Flat 9-Class Classifier\nEfficientNetV2-S @ 384px crop\nstaged: combined -> curated";
+      fillcolor="#efe7ff:#fbf9ff";
       gradientangle=90;
     ];
     attributes [
-      label="Multi-Head Outputs\nfamily, polarity, gender/contact,\nmount, orientation, termination,\nfinish/material cue";
-      fillcolor="#fff1cc:#fffaf0";
+      label="9-Class Output\n1.85/2.4/2.92/3.5 M+F + SMA-F\nsingle label (no attribute heads)";
+      fillcolor="#efe7ff:#fbf9ff";
       gradientangle=90;
     ];
     geometry [
@@ -162,7 +162,7 @@ digraph SystemArchitecturePoster {
     fillcolor="#ecfaed";
 
     taxonomy [
-      label="Connector Taxonomy\nSMA, RP-SMA, 3.5mm,\n2.92mm/K/SMK, 2.4mm,\n1.85mm, 1.0mm, SSMA,\nSMB, SMC, QMA, TNC,\nBNC, MCX, 7/16 DIN, unknown";
+      label="Class Config (configs/classes.yaml)\nthe 9 customer classes:\n1.85mm M/F, 2.4mm M/F,\n2.92mm M/F, 3.5mm M/F, SMA-F\nsingle source of truth";
       shape=folder;
       fillcolor="#e5f7e7:#f8fff8";
       gradientangle=90;
@@ -265,7 +265,7 @@ digraph SystemArchitecturePoster {
       gradientangle=90;
     ];
     result [
-      label="User Result Card\nconnector type, polarity,\ngender/contact, size cues,\nconfidence, alternatives,\nspec summary, next action";
+      label="User Result Card\nconnector class (1 of 9),\nconfidence, alternatives,\nspec summary, next action";
       fillcolor="#fff1cc:#fffaf0";
       gradientangle=90;
     ];
@@ -304,8 +304,8 @@ digraph SystemArchitecturePoster {
 
   predict -> decode;
   video -> decode [label="sampled frames"];
-  decode -> baseline [label="current path", color="#527aa3"];
-  decode -> detector [label="target path", style=dashed, color="#b88500"];
+  decode -> baseline [label="legacy fallback", style=dashed, color="#527aa3"];
+  decode -> detector [label="production path", color="#b88500"];
   detector -> classifier [label="connector crops"];
   classifier -> attributes;
   attributes -> geometry [label="candidate class"];

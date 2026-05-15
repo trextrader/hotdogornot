@@ -1,6 +1,6 @@
 digraph MultiArchitectureTransition {
   graph [
-    label="Connector ID - Transition from ResNet Baseline to Multi-Architecture Vision Pipeline";
+    label="Connector ID - Transition from ResNet Baseline to Two-Stage 9-Class Pipeline";
     labelloc=t;
     fontsize=24;
     fontname="Arial Bold";
@@ -64,7 +64,7 @@ digraph MultiArchitectureTransition {
   }
 
   subgraph cluster_detection {
-    label="Object Detection Track";
+    label="Stage 1 - Single-Class Localizer Track";
     fontname="Arial Bold";
     fontsize=16;
     color="#be8b00";
@@ -72,12 +72,12 @@ digraph MultiArchitectureTransition {
     fillcolor="#fff7df";
 
     yolo [
-      label="YOLO11n / YOLO11s\nfast connector detector\nmulti-connector separation";
+      label="YOLO11n single-class\nlocalizer only: nc=1 connector\nNO family / NO gender";
       fillcolor="#fff1cc:#fffaf0";
       gradientangle=90;
     ];
     rtdetr [
-      label="RT-DETR Small\nalternate detector\naccuracy/latency bake-off";
+      label="RT-DETR Small\nalternate localizer\naccuracy/latency bake-off";
       fillcolor="#fff1cc:#fffaf0";
       gradientangle=90;
     ];
@@ -90,7 +90,7 @@ digraph MultiArchitectureTransition {
   }
 
   subgraph cluster_classifier {
-    label="Fine-Grained Attribute Classification Track";
+    label="Stage 2 - Flat 9-Class Classifier Track (staged training)";
     fontname="Arial Bold";
     fontsize=16;
     color="#8c67aa";
@@ -98,23 +98,23 @@ digraph MultiArchitectureTransition {
     fillcolor="#f4ecfb";
 
     efficientnet [
-      label="EfficientNetV2-S\nhigh-accuracy crop classifier";
+      label="EfficientNetV2-S @ 384px\nchosen backbone\nfine-grained capacity";
       fillcolor="#fff1cc:#fffaf0";
       gradientangle=90;
     ];
-    mobilenet [
-      label="MobileNetV3 / MobileViT\nmobile-first classifier";
+    phase1 [
+      label="Phase 1: Representation\ncombined legacy+curated\nremapped to 9 (unmappable excluded)";
       fillcolor="#fff1cc:#fffaf0";
       gradientangle=90;
     ];
-    convnext [
-      label="ConvNeXt-Tiny\nstrong fine-grained candidate";
+    phase2 [
+      label="Phase 2: Calibration\nfine-tune low LR\ncurated-only";
       fillcolor="#fff1cc:#fffaf0";
       gradientangle=90;
     ];
     multihead [
-      label="Multi-Head Attribute Output\nfamily, polarity, gender,\nmount, orientation, termination";
-      fillcolor="#fff1cc:#fffaf0";
+      label="Flat 9-Class Output\n1.85/2.4/2.92/3.5 M+F + SMA-F\nsingle label (no attribute heads)";
+      fillcolor="#efe6ff:#fbf8ff";
       gradientangle=90;
     ];
   }
@@ -193,17 +193,15 @@ digraph MultiArchitectureTransition {
   image -> rtdetr [label="alternate detector", color="#b98200", style=dashed];
   yolo -> detector_metrics;
   rtdetr -> detector_metrics;
-  detector_metrics -> efficientnet [label="crops", color="#b98200", style=dashed];
-  detector_metrics -> mobilenet [label="crops", color="#b98200", style=dashed];
-  detector_metrics -> convnext [label="crops", color="#b98200", style=dashed];
+  detector_metrics -> efficientnet [label="tight crops", color="#b98200", style=dashed];
+  efficientnet -> phase1 [label="backbone", color="#b98200"];
+  phase1 -> phase2 [label="warm start", color="#b98200"];
+  phase2 -> multihead [label="trained 9-class head", color="#8c67aa"];
 
   resnet -> multihead [label="baseline comparison", color="#527aa3"];
-  efficientnet -> multihead;
-  mobilenet -> multihead;
-  convnext -> multihead;
 
-  multihead -> geometry [label="candidate attributes"];
-  multihead -> specs [label="family + polarity"];
+  multihead -> geometry [label="9-class label + crop"];
+  multihead -> specs [label="9-class label"];
   geometry -> abstention;
   specs -> abstention;
   render_match -> abstention [label="optional second pass", style=dashed, color="#b98200"];

@@ -1,0 +1,217 @@
+digraph NineClassTrainingPipeline {
+  graph [
+    label="Connector ID - Fine-Grained 9-Class Two-Stage Training Pipeline (2026-05-15 design)";
+    labelloc=t;
+    fontsize=26;
+    fontname="Arial Bold";
+    bgcolor="#f7f9fc";
+    pad=0.3;
+    rankdir=LR;
+    ranksep=0.85;
+    nodesep=0.45;
+    splines=spline;
+    compound=true;
+    outputorder=edgesfirst;
+  ];
+
+  node [
+    shape=box;
+    style="rounded,filled";
+    fontname="Arial";
+    fontsize=11;
+    margin="0.13,0.09";
+    color="#2f3b52";
+    penwidth=1.6;
+    fillcolor="#ffffff";
+  ];
+
+  edge [
+    fontname="Arial";
+    fontsize=10;
+    color="#56677a";
+    arrowsize=0.8;
+    penwidth=1.6;
+  ];
+
+  // Color key:
+  // Green  = data / config / artifact store
+  // Blue   = Stage 1 detector (single-class localizer)
+  // Purple = Stage 2 flat 9-class classifier
+  // Gold   = training phases
+  // Red    = evaluation / exit gate
+
+  // -----------------------------------------------------------------------
+  // Single source of truth: the 9 classes.
+  // -----------------------------------------------------------------------
+  subgraph cluster_classes {
+    label="Class Set - Single Source of Truth";
+    fontname="Arial Bold";
+    fontsize=15;
+    color="#5a9b62";
+    style="rounded,filled";
+    fillcolor="#ecfaed";
+
+    classes_yaml [
+      label="configs/classes.yaml\nthe 9 customer classes\n1.85/2.4/2.92/3.5 M+F + SMA-F\n(SMA-M dropped, 1.85mm added)";
+      shape=folder;
+      fillcolor="#e5f7e7:#f8fff8";
+      gradientangle=90;
+    ];
+    canonical [
+      label="CANONICAL_CLASSES\n1_Training_Data.py labeler UI\nderived from classes.yaml";
+      fillcolor="#e5f7e7:#f8fff8";
+      gradientangle=90;
+    ];
+    drift_test [
+      label="Drift Guard Test\nclasses.yaml == CANONICAL ==\nclassifier label encoding\n(fails loud on divergence)";
+      shape=diamond;
+      fillcolor="#fce3e3:#fff7f7";
+      gradientangle=90;
+    ];
+
+    classes_yaml -> canonical [label="defines", color="#5a9b62"];
+    classes_yaml -> drift_test [color="#5a9b62"];
+    canonical -> drift_test [color="#5a9b62"];
+  }
+
+  // -----------------------------------------------------------------------
+  // Data sources.
+  // -----------------------------------------------------------------------
+  subgraph cluster_data {
+    label="Data Sources";
+    fontname="Arial Bold";
+    fontsize=15;
+    color="#5a9b62";
+    style="rounded,filled";
+    fillcolor="#ecfaed";
+
+    curated [
+      label="Curated Field Set\ndata/labeled/embedder\nphoto_2026-05-14_* (196 imgs)\nclean, real, exactly the 9";
+      shape=folder;
+      fillcolor="#e5f7e7:#f8fff8";
+      gradientangle=90;
+    ];
+    legacy [
+      label="Legacy Set (trextrader history)\n~13.8k synthetic/video frames\nremapped to 9; unmappable EXCLUDED\n(present in fresh Colab clone)";
+      shape=folder;
+      fillcolor="#e5f7e7:#f8fff8";
+      gradientangle=90;
+    ];
+  }
+
+  // -----------------------------------------------------------------------
+  // Stage 1: single-class detector.
+  // -----------------------------------------------------------------------
+  subgraph cluster_stage1 {
+    label="Stage 1 - Detector (localizer only)";
+    fontname="Arial Bold";
+    fontsize=15;
+    color="#527aa3";
+    style="rounded,filled";
+    fillcolor="#edf6ff";
+
+    det_data [
+      label="Single-Class Dataset\nconfigs/detector.yaml\nnc: 1  names: {0: connector}\n(family-collapse build REMOVED)";
+      shape=folder;
+      fillcolor="#d9ecff:#f7fbff";
+      gradientangle=90;
+    ];
+    yolo [
+      label="YOLO Detector\nfinds connector, tight box\nNO family / NO gender";
+      fillcolor="#d9ecff:#f7fbff";
+      gradientangle=90;
+    ];
+    crop [
+      label="Tight Crop\nupscaled to >= 384 px\nthread detail resolvable";
+      fillcolor="#d9ecff:#f7fbff";
+      gradientangle=90;
+    ];
+
+    det_data -> yolo [label="train", color="#3f79b8"];
+    yolo -> crop [label="bbox", color="#3f79b8"];
+  }
+
+  // -----------------------------------------------------------------------
+  // Stage 2: flat 9-class classifier, staged training.
+  // -----------------------------------------------------------------------
+  subgraph cluster_stage2 {
+    label="Stage 2 - Flat 9-Class Classifier (staged training)";
+    fontname="Arial Bold";
+    fontsize=15;
+    color="#8c67aa";
+    style="rounded,filled";
+    fillcolor="#f4ecfb";
+
+    phase1 [
+      label="Phase 1 - Representation\nEfficientNetV2-S @ 384px\ncombined legacy + curated\nclass-balanced sampling";
+      fillcolor="#fff1cc:#fffaf0";
+      gradientangle=90;
+    ];
+    phase2 [
+      label="Phase 2 - Calibration\nfine-tune low LR\ncurated-only\naug preserves thread pitch";
+      fillcolor="#fff1cc:#fffaf0";
+      gradientangle=90;
+    ];
+    clf [
+      label="Flat 9-Class Head\none label out of the 9\n(rfconnectorai.classifier)";
+      fillcolor="#efe6ff:#fbf8ff";
+      gradientangle=90;
+    ];
+
+    phase1 -> phase2 [label="warm start", color="#b98200"];
+    phase2 -> clf [label="trained weights", color="#8c67aa"];
+  }
+
+  // -----------------------------------------------------------------------
+  // Evaluation + export (exit criteria).
+  // -----------------------------------------------------------------------
+  subgraph cluster_exit {
+    label="Evaluation + Export (exit criteria)";
+    fontname="Arial Bold";
+    fontsize=15;
+    color="#be8b00";
+    style="rounded,filled";
+    fillcolor="#fff7df";
+
+    eval [
+      label="9-Class Evaluation\ncurated holdout ONLY\nper-class + M/F +\nadjacent-size confusion matrix";
+      shape=diamond;
+      fillcolor="#fce3e3:#fff7f7";
+      gradientangle=90;
+    ];
+    onnx [
+      label="classifier.onnx (9-class)\nclassifier/export_onnx.py\nVALIDATED EXPORT = done";
+      shape=note;
+      fillcolor="#fff1cc:#fffaf0";
+      gradientangle=90;
+    ];
+    oos [
+      label="Out of scope\non-device app rewiring,\nmulti-head model, metrology";
+      shape=note;
+      fillcolor="#eef3f8:#f8fbff";
+      gradientangle=90;
+    ];
+
+    eval -> onnx [label="passes", color="#b98200"];
+  }
+
+  // -----------------------------------------------------------------------
+  // Cross-cluster flow.
+  // -----------------------------------------------------------------------
+  classes_yaml -> curated [label="label vocab", color="#5a9b62", style=dashed];
+  classes_yaml -> clf [label="9-class encoding", color="#5a9b62", style=dashed];
+
+  curated -> det_data [label="boxes -> single class", color="#3f79b8"];
+  legacy -> det_data [label="boxes -> single class", color="#3f79b8", style=dashed];
+
+  curated -> phase1 [label="clean crops", color="#8c67aa"];
+  legacy -> phase1 [label="remapped crops", color="#8c67aa", style=dashed];
+  curated -> phase2 [label="curated-only", color="#8c67aa"];
+
+  crop -> clf [label="runtime crop", color="#56677a", style=dashed];
+  clf -> eval [label="predictions", color="#8c67aa"];
+  curated -> eval [label="held-out split", color="#5a9b62"];
+
+  // Layout anchors.
+  drift_test -> phase1 [style=invis; weight=8; constraint=true];
+}

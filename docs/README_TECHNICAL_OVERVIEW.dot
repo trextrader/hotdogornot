@@ -43,13 +43,13 @@ digraph ReadmeTechnicalOverview {
   ];
 
   detect [
-    label="Detect\nconnector boxes\nmulti-instance";
+    label="Detect (Stage 1)\nsingle-class YOLO\nconnector box only";
     fillcolor="#0f766e:#115e59";
     gradientangle=90;
   ];
 
   classify [
-    label="Classify\nfamily + polarity\ngender + shape";
+    label="Classify (Stage 2)\nflat 9-class on crop\n1.85/2.4/2.92/3.5 M+F + SMA-F";
     fillcolor="#7c3aed:#5b21b6";
     gradientangle=90;
   ];
@@ -89,7 +89,7 @@ digraph ReadmeTechnicalOverview {
   ];
 
   export [
-    label="Deploy\nserver fallback\nmobile export";
+    label="Deploy\non-device ONNX\nserver = fallback";
     shape=component;
     fillcolor="#1d4ed8:#1e3a8a";
     gradientangle=90;
@@ -101,7 +101,7 @@ digraph ReadmeTechnicalOverview {
 
   capture -> detect [label="frame"];
   detect -> classify [label="crop"];
-  classify -> verify [label="attributes"];
+  classify -> verify [label="9-class label"];
   verify -> decide [label="evidence"];
   decide -> result [label="answer"];
   result -> feedback [label="corrections", style=dashed, color="#86efac"];

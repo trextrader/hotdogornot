@@ -39,7 +39,7 @@ digraph ConnectorIDReadmeArchitecture {
   ];
 
   app [
-    label="Flutter App\nmobile now, desktop planned";
+    label="Capacitor App (production)\non-device camera + ONNX\nFlutter shell = legacy";
     shape=component;
     fillcolor="#cfe6ff:#f8fbff";
     gradientangle=90;
@@ -52,19 +52,19 @@ digraph ConnectorIDReadmeArchitecture {
   ];
 
   current [
-    label="Current Baseline\nHough crop + rembg gate\nResNet-18 classifier";
+    label="Legacy Baseline\nHough crop + rembg gate\nResNet-18 classifier\n(fallback only)";
     fillcolor="#d9ecff:#f7fbff";
     gradientangle=90;
   ];
 
   planned [
-    label="Roadmap Vision Pipeline\nobject detector + multi-head attributes\nmeasurement assist + abstention";
+    label="Two-Stage Pipeline (production design)\nStage 1: single-class YOLO localizer\nStage 2: flat 9-class classifier\n1.85/2.4/2.92/3.5 M+F + SMA-F";
     fillcolor="#fff1cc:#fffaf0";
     gradientangle=90;
   ];
 
   specs [
-    label="Taxonomy + Spec Lookup\nconnectors.yaml\nfamily, polarity, gender, specs";
+    label="Class Config + Spec Lookup\nconfigs/classes.yaml (the 9)\nper-class specs";
     shape=folder;
     fillcolor="#e5f7e7:#f8fff8";
     gradientangle=90;
@@ -84,7 +84,7 @@ digraph ConnectorIDReadmeArchitecture {
   ];
 
   deploy [
-    label="Deployment Targets\nserver fallback now\nONNX / TFLite / Core ML planned";
+    label="Deployment Targets\non-device ONNX (production)\nserver = fallback";
     shape=component;
     fillcolor="#efe6ff:#fbf8ff";
     gradientangle=90;
@@ -94,10 +94,10 @@ digraph ConnectorIDReadmeArchitecture {
 
   camera -> app [label="capture"];
   app -> api [label="POST image/video"];
-  api -> current [label="preserved path"];
-  api -> planned [label="new path", style=dashed, color="#b98200"];
-  current -> result [label="old fields"];
-  planned -> specs [label="family + attributes", style=dashed, color="#b98200"];
+  api -> current [label="legacy fallback", style=dashed, color="#527aa3"];
+  api -> planned [label="production path", color="#b98200"];
+  current -> result [label="old fields", style=dashed];
+  planned -> specs [label="9-class label", color="#b98200"];
   specs -> result [label="spec summary", color="#5a9b62"];
   result -> app [label="display + correction"];
   app -> feedback [label="confirmed/corrected captures", color="#5a9b62"];
