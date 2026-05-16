@@ -178,3 +178,33 @@ def test_read_manifest_rejects_invalid_json(tmp_path: Path):
     manifest.write_text("not json\n", encoding="utf-8")
     with pytest.raises(ValueError):
         read_manifest(manifest)
+
+
+def test_single_class_mode_collapses_to_connector(tmp_path):
+    import json
+    from rfconnectorai.data.build_yolo_dataset import build_dataset
+
+    manifest = tmp_path / "instances.jsonl"
+    rows = [
+        {"instance_id": "i1", "source_image": "a.jpg", "crop_path": "crops/i1.jpg",
+         "bbox_xyxy": [0, 0, 10, 10],
+         "family": "2.4mm", "precision_family": "2.4mm", "side_a_gender": "male_pin",
+         "side_b_gender": "unknown", "polarity": "standard", "mount_style": "cable_mount",
+         "orientation": "straight", "termination": "solder",
+         "finish_material_cue": "gold", "label_confidence": "human_verified",
+         "source_type": "real_photo"},
+        {"instance_id": "i2", "source_image": "b.jpg", "crop_path": "crops/i2.jpg",
+         "bbox_xyxy": [0, 0, 10, 10],
+         "family": "SMA", "precision_family": "standard_sma", "side_a_gender": "female_socket",
+         "side_b_gender": "unknown", "polarity": "standard", "mount_style": "cable_mount",
+         "orientation": "straight", "termination": "solder",
+         "finish_material_cue": "gold", "label_confidence": "human_verified",
+         "source_type": "real_photo"},
+    ]
+    manifest.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+
+    summary = build_dataset(
+        manifest=manifest, out_dir=tmp_path / "ds", base_dir=tmp_path,
+        dry_run=True, single_class=True,
+    )
+    assert summary["family_to_idx"] == {"connector": 0}

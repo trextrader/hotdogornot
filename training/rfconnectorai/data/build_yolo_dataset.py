@@ -205,6 +205,7 @@ def build_dataset(
     splits: tuple[tuple[str, float], ...] = DEFAULT_SPLITS,
     seed: int = 1337,
     dry_run: bool = False,
+    single_class: bool = False,
     taxonomy_path: Path | None = None,
     holdout_groups: Iterable[str] = (),
     dataset_id: str | None = None,
@@ -221,7 +222,10 @@ def build_dataset(
             "a non-zero row count before invoking build_yolo_dataset."
         )
 
-    family_to_idx = family_index(instances)
+    if single_class:
+        family_to_idx = {"connector": 0}
+    else:
+        family_to_idx = family_index(instances)
     plan = plan_splits(
         instances, splits=splits, seed=seed, holdout_groups=holdout_groups
     )
@@ -259,7 +263,7 @@ def build_dataset(
             image_w, image_h = size
 
         cx, cy, bw, bh = normalize_bbox(instance.bbox_xyxy, image_w, image_h)
-        cls_idx = class_index_for(instance, family_to_idx)
+        cls_idx = 0 if single_class else class_index_for(instance, family_to_idx)
 
         label_line = f"{cls_idx} {cx:.6f} {cy:.6f} {bw:.6f} {bh:.6f}\n"
 
@@ -361,6 +365,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--seed", type=int, default=1337)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--single-class", action="store_true",
+                        help="Detector mode: emit nc=1 'connector' (no family/gender).")
     parser.add_argument(
         "--taxonomy",
         type=Path,
@@ -381,6 +387,7 @@ def main(argv: list[str] | None = None) -> int:
         base_dir=args.base_dir,
         seed=args.seed,
         dry_run=args.dry_run,
+        single_class=args.single_class,
         taxonomy_path=args.taxonomy,
         holdout_groups=args.holdout_group,
     )
