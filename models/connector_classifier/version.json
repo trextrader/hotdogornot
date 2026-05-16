@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "trained_at": "2026-05-16T08:37:15.675075+00:00",
+  "weights_filename": "weights.pt",
+  "weights_onnx_filename": "classifier.onnx",
+  "n_train_samples": 168,
+  "val_acc": 0.7857142857142857
+}
