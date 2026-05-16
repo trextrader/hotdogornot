@@ -25,16 +25,23 @@ def test_classes_yaml_matches_expected_order():
 
 
 def test_canonical_classes_matches_yaml():
-    import importlib.util
+    import ast
 
     page = (
         Path(__file__).resolve().parent.parent
         / "scripts" / "pages" / "1_Training_Data.py"
     )
-    spec = importlib.util.spec_from_file_location("_training_data_page", page)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    assert mod.CANONICAL_CLASSES == class_names(CONFIG)
+    tree = ast.parse(page.read_text(encoding="utf-8"), filename=str(page))
+    canonical = None
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == "CANONICAL_CLASSES"
+            for t in node.targets
+        ):
+            canonical = ast.literal_eval(node.value)
+            break
+    assert canonical is not None, "CANONICAL_CLASSES not found in page source"
+    assert canonical == class_names(CONFIG)
 
 
 def test_classifier_default_classes_match_yaml():
