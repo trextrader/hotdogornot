@@ -58,6 +58,8 @@ class TrainConfig:
     data_dir: Path
     out_dir: Path
     class_names: list[str]
+    architecture: str = "resnet18"
+    input_size: int = INPUT_SIZE
     epochs: int = 8
     batch_size: int = 16
     learning_rate: float = 3e-4
@@ -109,13 +111,24 @@ def _set_seed(seed: int) -> None:
     torch.manual_seed(seed)
 
 
-def _build_model(num_classes: int) -> nn.Module:
-    """ResNet-18 with the final layer swapped for num_classes."""
-    weights = models.ResNet18_Weights.IMAGENET1K_V1
-    model = models.resnet18(weights=weights)
-    in_features = model.fc.in_features
-    model.fc = nn.Linear(in_features, num_classes)
-    return model
+def build_model(num_classes: int, architecture: str = "resnet18") -> nn.Module:
+    """Backbone with a fresh classification head of `num_classes`."""
+    if architecture == "resnet18":
+        net = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+        net.fc = nn.Linear(net.fc.in_features, num_classes)
+        return net
+    if architecture == "efficientnet_v2_s":
+        net = models.efficientnet_v2_s(
+            weights=models.EfficientNet_V2_S_Weights.DEFAULT
+        )
+        in_features = net.classifier[1].in_features
+        net.classifier[1] = nn.Linear(in_features, num_classes)
+        return net
+    raise ValueError(f"unknown architecture {architecture!r}")
+
+
+def _build_model(num_classes: int) -> nn.Module:  # back-compat shim
+    return build_model(num_classes, "resnet18")
 
 
 def _split_indices(n: int, val_fraction: float, seed: int) -> tuple[list[int], list[int]]:
@@ -250,12 +263,12 @@ def train(config: TrainConfig) -> dict:
     train_ds = ConnectorFolderDataset(
         root=config.data_dir,
         class_names=config.class_names,
-        transform=make_train_transforms(),
+        transform=make_train_transforms(config.input_size),
     )
     eval_ds = ConnectorFolderDataset(
         root=config.data_dir,
         class_names=config.class_names,
-        transform=make_eval_transforms(),
+        transform=make_eval_transforms(config.input_size),
     )
 
     if len(train_ds) == 0:
@@ -332,7 +345,7 @@ def train(config: TrainConfig) -> dict:
         batch_size=config.batch_size, shuffle=False, num_workers=0,
     )
 
-    model = _build_model(num_classes=len(config.class_names)).to(device)
+    model = build_model(num_classes=len(config.class_names), architecture=config.architecture,).to(device)
     # Label smoothing 0.1 directly attacks the "99% confident wrong" problem
     # we observed on held-out: prevents the model from saturating to ~1.0
     # softmax probabilities, leaves room for TTA averaging to denoise, and
@@ -378,8 +391,8 @@ def train(config: TrainConfig) -> dict:
     torch.save(model.state_dict(), weights_path)
     labels_path.write_text(json.dumps({
         "class_names": config.class_names,
-        "input_size": INPUT_SIZE,
-        "architecture": "resnet18",
+        "input_size": config.input_size,
+        "architecture": config.architecture,
         "n_train_samples": len(train_idx),
         "n_val_samples": len(val_idx),
         "class_counts": ConnectorFolderDataset(
@@ -422,6 +435,9 @@ def main():
     ap.add_argument("--batch-size", type=int, default=16)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--val-fraction", type=float, default=0.2)
+    ap.add_argument("--architecture", default="resnet18",
+                    choices=["resnet18", "efficientnet_v2_s"])
+    ap.add_argument("--input-size", type=int, default=INPUT_SIZE)
     args = ap.parse_args()
 
     config = TrainConfig(
@@ -432,6 +448,8 @@ def main():
         batch_size=args.batch_size,
         learning_rate=args.lr,
         val_fraction=args.val_fraction,
+        architecture=args.architecture,
+        input_size=args.input_size,
     )
     train(config)
 
