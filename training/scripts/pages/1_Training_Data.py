@@ -42,7 +42,7 @@ CANONICAL_CLASSES = [
     "2.4mm-M", "2.4mm-F",
     "2.92mm-M", "2.92mm-F",
     "3.5mm-M", "3.5mm-F",
-    "SMA-F",
+    "SMA-F", "SMA-M",
 ]
 LABEL_CHOICES = ["(skip)"] + CANONICAL_CLASSES
 

@@ -6,14 +6,14 @@ from rfconnectorai.data.classes import load_classes, ConnectorClass
 CONFIG = Path(__file__).resolve().parent.parent / "configs" / "classes.yaml"
 
 
-def test_load_classes_returns_nine():
+def test_load_classes_returns_ten():
     classes = load_classes(CONFIG)
-    assert len(classes) == 9
+    assert len(classes) == 10
 
 
 def test_load_classes_ids_are_contiguous():
     classes = load_classes(CONFIG)
-    assert [c.id for c in classes] == list(range(9))
+    assert [c.id for c in classes] == list(range(10))
 
 
 def test_load_classes_names_match_spec():
@@ -24,7 +24,7 @@ def test_load_classes_names_match_spec():
         "2.4mm-M", "2.4mm-F",
         "2.92mm-M", "2.92mm-F",
         "3.5mm-M", "3.5mm-F",
-        "SMA-F",
+        "SMA-F", "SMA-M",
     }
 
 
@@ -32,6 +32,7 @@ def test_precision_classes_flagged_correctly():
     classes = load_classes(CONFIG)
     families = {c.name: c.family for c in classes}
     assert families["SMA-F"] == "sma"
+    assert families["SMA-M"] == "sma"
     for name in [
         "1.85mm-M", "1.85mm-F", "2.4mm-M", "2.4mm-F",
         "2.92mm-M", "2.92mm-F", "3.5mm-M", "3.5mm-F",
@@ -49,7 +50,7 @@ def test_connector_class_is_frozen():
         c.id = 1  # frozen dataclass must not allow mutation
 
 
-def test_class_names_returns_ordered_nine():
+def test_class_names_returns_ordered_ten():
     from rfconnectorai.data.classes import class_names
     names = class_names(CONFIG)
     assert names == [
@@ -57,5 +58,5 @@ def test_class_names_returns_ordered_nine():
         "2.4mm-M", "2.4mm-F",
         "2.92mm-M", "2.92mm-F",
         "3.5mm-M", "3.5mm-F",
-        "SMA-F",
+        "SMA-F", "SMA-M",
     ]

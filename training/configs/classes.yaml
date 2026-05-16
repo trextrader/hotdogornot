@@ -89,3 +89,12 @@ classes:
     frequency_ghz_max: 18.0
     impedance_ohms: 50
     mating_torque_in_lb: 8.0
+
+  - id: 9
+    name: "SMA-M"
+    family: "sma"
+    gender: "male"
+    inner_pin_diameter_mm: 0.91
+    frequency_ghz_max: 18.0
+    impedance_ohms: 50
+    mating_torque_in_lb: 8.0
