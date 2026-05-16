@@ -33,3 +33,11 @@ def load_classes(path: Path | str) -> list[ConnectorClass]:
         raise ValueError(f"Class ids must be contiguous from 0; got {ids}")
 
     return classes
+
+
+def class_names(path: Path | str) -> list[str]:
+    """Ordered list of connector class names (index == class id).
+
+    This is THE source of truth for the flat classifier's label order.
+    """
+    return [c.name for c in load_classes(path)]

@@ -47,3 +47,15 @@ def test_connector_class_is_frozen():
     )
     with pytest.raises(Exception):
         c.id = 1  # frozen dataclass must not allow mutation
+
+
+def test_class_names_returns_ordered_nine():
+    from rfconnectorai.data.classes import class_names
+    names = class_names(CONFIG)
+    assert names == [
+        "1.85mm-M", "1.85mm-F",
+        "2.4mm-M", "2.4mm-F",
+        "2.92mm-M", "2.92mm-F",
+        "3.5mm-M", "3.5mm-F",
+        "SMA-F",
+    ]
