@@ -38,11 +38,11 @@ VIDEOS_ROOT = REPO / "data" / "videos"
 DEFAULT_MODEL_DIR = REPO / "models" / "connector_classifier"
 
 CANONICAL_CLASSES = [
-    "SMA-M", "SMA-F",
-    "3.5mm-M", "3.5mm-F",
-    "2.92mm-M", "2.92mm-F",
-    "2.4mm-M", "2.4mm-F",
     "1.85mm-M", "1.85mm-F",
+    "2.4mm-M", "2.4mm-F",
+    "2.92mm-M", "2.92mm-F",
+    "3.5mm-M", "3.5mm-F",
+    "SMA-F",
 ]
 LABEL_CHOICES = ["(skip)"] + CANONICAL_CLASSES
 
