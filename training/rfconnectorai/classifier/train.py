@@ -41,6 +41,17 @@ from rfconnectorai.classifier.dataset import (
     make_train_transforms,
 )
 
+from rfconnectorai.data.classes import class_names as _yaml_class_names
+
+_CLASSES_YAML = (
+    Path(__file__).resolve().parents[2] / "configs" / "classes.yaml"
+)
+
+
+def default_class_names() -> list[str]:
+    """The 9-class label order, sourced from configs/classes.yaml."""
+    return _yaml_class_names(_CLASSES_YAML)
+
 
 @dataclass
 class TrainConfig:
@@ -406,12 +417,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, required=True)
-    ap.add_argument("--classes", nargs="+", default=[
-        "SMA-M", "SMA-F",
-        "3.5mm-M", "3.5mm-F",
-        "2.92mm-M", "2.92mm-F",
-        "2.4mm-M", "2.4mm-F",
-    ])
+    ap.add_argument("--classes", nargs="+", default=default_class_names())
     ap.add_argument("--epochs", type=int, default=8)
     ap.add_argument("--batch-size", type=int, default=16)
     ap.add_argument("--lr", type=float, default=3e-4)
