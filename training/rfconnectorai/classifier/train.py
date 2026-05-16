@@ -94,6 +94,7 @@ class TrainConfig:
     # bias. Pair with use_grouped_split=True so the cluster diversity
     # is preserved.
     balance_to_smallest: bool = False
+    init_weights: Path | None = None
 
 
 @dataclass
@@ -346,6 +347,10 @@ def train(config: TrainConfig) -> dict:
     )
 
     model = build_model(num_classes=len(config.class_names), architecture=config.architecture,).to(device)
+    if config.init_weights is not None:
+        state = torch.load(config.init_weights, map_location=device)
+        model.load_state_dict(state)
+        print(f"[train] warm-started from {config.init_weights}")
     # Label smoothing 0.1 directly attacks the "99% confident wrong" problem
     # we observed on held-out: prevents the model from saturating to ~1.0
     # softmax probabilities, leaves room for TTA averaging to denoise, and
@@ -438,6 +443,8 @@ def main():
     ap.add_argument("--architecture", default="resnet18",
                     choices=["resnet18", "efficientnet_v2_s"])
     ap.add_argument("--input-size", type=int, default=INPUT_SIZE)
+    ap.add_argument("--init-weights", type=Path, default=None,
+                    help="Phase-1 weights.pt to warm-start from (Phase 2 fine-tune).")
     args = ap.parse_args()
 
     config = TrainConfig(
@@ -450,6 +457,7 @@ def main():
         val_fraction=args.val_fraction,
         architecture=args.architecture,
         input_size=args.input_size,
+        init_weights=args.init_weights,
     )
     train(config)
 
