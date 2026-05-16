@@ -1,6 +1,6 @@
 """
-Export the trained ResNet-18 classifier to ONNX so it can be loaded by
-Unity Sentis on the AR app.
+Export the trained classifier (ResNet-18 or EfficientNetV2-S, selected
+from labels.json "architecture") to ONNX so it can be loaded on-device.
 
 Usage (CLI):
     python -m rfconnectorai.classifier.export_onnx \\

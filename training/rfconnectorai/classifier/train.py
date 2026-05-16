@@ -1,9 +1,10 @@
 """
 Train a small image classifier on the labeled connector folders.
 
-Architecture: ResNet-18 pretrained on ImageNet, fine-tune the final FC layer
-to N classes. Roughly the right size for 8 classes × 50–100 images per class
-on CPU — trains in <10 minutes with reasonable transforms.
+Architecture: selectable via --architecture (resnet18 default, or
+efficientnet_v2_s), pretrained on ImageNet, classification head swapped
+to N classes. Supports a staged warm-start via --init-weights (Phase 2
+fine-tune from a Phase 1 checkpoint).
 
 Usage:
     python -m rfconnectorai.classifier.train \\
@@ -13,7 +14,7 @@ Usage:
 
 Outputs to `out_dir`:
     weights.pt        — torch state_dict of the fine-tuned model
-    labels.json       — {"class_names": [...], "input_size": 224, ...}
+    labels.json       — {"class_names": [...], "input_size": ..., "architecture": ...}
     metrics.json      — train/val loss + accuracy per epoch
 
 The predict module loads from this same directory.
