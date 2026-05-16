@@ -28,16 +28,9 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-from torchvision import models
 
 from rfconnectorai.classifier.dataset import INPUT_SIZE, IMAGENET_MEAN, IMAGENET_STD
-
-
-def _build_model(num_classes: int) -> nn.Module:
-    model = models.resnet18(weights=None)
-    in_features = model.fc.in_features
-    model.fc = nn.Linear(in_features, num_classes)
-    return model
+from rfconnectorai.classifier.train import build_model
 
 
 class _NormalizedClassifier(nn.Module):
@@ -87,8 +80,9 @@ def export_to_onnx(
     labels_blob = json.loads(labels_path.read_text())
     class_names = labels_blob["class_names"]
     input_size = labels_blob.get("input_size", INPUT_SIZE)
+    architecture = labels_blob.get("architecture", "resnet18")
 
-    base = _build_model(num_classes=len(class_names))
+    base = build_model(num_classes=len(class_names), architecture=architecture)
     base.load_state_dict(torch.load(weights_path, map_location="cpu"))
     wrapped = _NormalizedClassifier(base).eval()
 

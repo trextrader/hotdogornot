@@ -3,11 +3,12 @@ from pathlib import Path
 import numpy as np
 import onnxruntime as ort
 import torch
-from rfconnectorai.export.onnx_export import export_embedder, export_detector
-from rfconnectorai.models.embedder import RGBDEmbedder
 
 
 def test_export_embedder_roundtrip(tmp_path: Path):
+    from rfconnectorai.export.onnx_export import export_embedder
+    from rfconnectorai.models.embedder import RGBDEmbedder
+
     model = RGBDEmbedder(embedding_dim=128, pretrained=False)
     model.eval()
     ckpt = tmp_path / "e.pt"
@@ -30,7 +31,8 @@ def test_export_embedder_roundtrip(tmp_path: Path):
 
 
 def test_quantize_int8_shrinks_model_and_preserves_outputs(tmp_path: Path):
-    from rfconnectorai.export.onnx_export import quantize_int8
+    from rfconnectorai.export.onnx_export import export_embedder, quantize_int8
+    from rfconnectorai.models.embedder import RGBDEmbedder
 
     model = RGBDEmbedder(embedding_dim=128, pretrained=False)
     model.eval()
@@ -77,6 +79,8 @@ def test_export_detector_produces_onnx(tmp_path: Path):
     The detector export is an Ultralytics passthrough — we just verify it yields
     an ONNX file. Deeper equivalence checks happen inside ultralytics.
     """
+    from rfconnectorai.export.onnx_export import export_detector
+
     onnx_path = tmp_path / "detector.onnx"
 
     export_detector(weights=Path("yolo11n.pt"), output=onnx_path, image_size=320)
@@ -85,3 +89,43 @@ def test_export_detector_produces_onnx(tmp_path: Path):
     # Load with onnxruntime to ensure it's valid.
     session = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
     assert session is not None
+
+
+def test_export_resnet18(tmp_path):
+    import json
+    import torch
+    from rfconnectorai.classifier.train import build_model
+    from rfconnectorai.classifier.export_onnx import export_to_onnx
+
+    model_dir = tmp_path / "m"
+    model_dir.mkdir()
+    net = build_model(num_classes=9, architecture="resnet18")
+    torch.save(net.state_dict(), model_dir / "weights.pt")
+    (model_dir / "labels.json").write_text(json.dumps({
+        "class_names": [f"c{i}" for i in range(9)],
+        "input_size": 224,
+        "architecture": "resnet18",
+    }))
+
+    out = export_to_onnx(model_dir, model_dir / "weights.onnx")
+    assert out.exists() and out.stat().st_size > 0
+
+
+def test_export_efficientnet_v2_s(tmp_path):
+    import json
+    import torch
+    from rfconnectorai.classifier.train import build_model
+    from rfconnectorai.classifier.export_onnx import export_to_onnx
+
+    model_dir = tmp_path / "m"
+    model_dir.mkdir()
+    net = build_model(num_classes=9, architecture="efficientnet_v2_s")
+    torch.save(net.state_dict(), model_dir / "weights.pt")
+    (model_dir / "labels.json").write_text(json.dumps({
+        "class_names": [f"c{i}" for i in range(9)],
+        "input_size": 384,
+        "architecture": "efficientnet_v2_s",
+    }))
+
+    out = export_to_onnx(model_dir, model_dir / "weights.onnx")
+    assert out.exists() and out.stat().st_size > 0
