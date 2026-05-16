@@ -805,7 +805,7 @@ def test_report_per_class_and_pairs():
 
     rep = build_report(y_true, y_pred, class_names)
 
-    assert rep["overall_accuracy"] == 4 / 6
+    assert rep["overall_accuracy"] == 5 / 6     # 1 error in 6 samples
     assert rep["confusion"][0][1] == 1          # 2.4mm-M predicted 2.92mm-M
     assert rep["per_class"]["2.92mm-M"]["recall"] == 1.0
     assert rep["per_class"]["2.4mm-M"]["recall"] == 0.5
@@ -972,10 +972,13 @@ Edit cell 7: add `--single-class` to the `build_yolo_dataset` invocation. The ce
 
 - [ ] **Step 3: Cell 8 — detector training unchanged**
 
-Verify cell 8 still trains YOLO against `datasets/rfconnectors/data.yaml` (now single-class). No edit needed; add a leading comment line to the cell source:
+Verify cell 8 still trains YOLO against `datasets/rfconnectors/data.yaml` (now single-class). Cell 8 is a `%%shell` cell, so the `%%shell` magic MUST stay the first line — add the annotation as a *bash comment on line 2*, immediately after the magic (NOT before it, which breaks the cell magic):
 
-```python
+```
+%%shell
 # Stage 1: single-class connector localizer (data.yaml is now nc=1).
+set -euxo pipefail
+... (rest of the existing cell 8 unchanged) ...
 ```
 
 - [ ] **Step 4: Insert new cell after cell 8 — Phase 1 classifier (combined)**
