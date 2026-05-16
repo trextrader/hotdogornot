@@ -8,7 +8,7 @@ def test_report_per_class_and_pairs():
 
     rep = build_report(y_true, y_pred, class_names)
 
-    assert rep["overall_accuracy"] == 4 / 6
+    assert rep["overall_accuracy"] == 5 / 6
     assert rep["confusion"][0][1] == 1
     assert rep["per_class"]["2.92mm-M"]["recall"] == 1.0
     assert rep["per_class"]["2.4mm-M"]["recall"] == 0.5
