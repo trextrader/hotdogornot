@@ -6,33 +6,36 @@ from rfconnectorai.data.classes import load_classes, ConnectorClass
 CONFIG = Path(__file__).resolve().parent.parent / "configs" / "classes.yaml"
 
 
-def test_load_classes_returns_eight():
+def test_load_classes_returns_nine():
     classes = load_classes(CONFIG)
-    assert len(classes) == 8
+    assert len(classes) == 9
 
 
 def test_load_classes_ids_are_contiguous():
     classes = load_classes(CONFIG)
-    assert [c.id for c in classes] == list(range(8))
+    assert [c.id for c in classes] == list(range(9))
 
 
 def test_load_classes_names_match_spec():
     classes = load_classes(CONFIG)
     names = {c.name for c in classes}
     assert names == {
-        "SMA-M", "SMA-F",
-        "3.5mm-M", "3.5mm-F",
-        "2.92mm-M", "2.92mm-F",
+        "1.85mm-M", "1.85mm-F",
         "2.4mm-M", "2.4mm-F",
+        "2.92mm-M", "2.92mm-F",
+        "3.5mm-M", "3.5mm-F",
+        "SMA-F",
     }
 
 
 def test_precision_classes_flagged_correctly():
     classes = load_classes(CONFIG)
     families = {c.name: c.family for c in classes}
-    assert families["SMA-M"] == "sma"
     assert families["SMA-F"] == "sma"
-    for name in ["3.5mm-M", "3.5mm-F", "2.92mm-M", "2.92mm-F", "2.4mm-M", "2.4mm-F"]:
+    for name in [
+        "1.85mm-M", "1.85mm-F", "2.4mm-M", "2.4mm-F",
+        "2.92mm-M", "2.92mm-F", "3.5mm-M", "3.5mm-F",
+    ]:
         assert families[name] == "precision"
 
 
