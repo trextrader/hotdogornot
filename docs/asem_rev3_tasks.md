@@ -97,13 +97,17 @@ file as each item completes.
 
 ## Stage 6 — hardcase.js: trace + local logging + export
 
-- [ ] Create `exports/web/asem/hardcase.js`
-- [ ] `buildDecisionTrace()` emits exactly `asem_rev3_trace_v1` using **real** ONNX filenames
-- [ ] Failure tags: blur, poor_center, scale_ambiguous, side_angle_needed, family_confusion, gender_confusion, out_of_support, detector_missed
-- [ ] Opt-in consent; local-only; disable works; **no auto-upload code path**
-- [ ] Log all abstained (consented) + sample accepted at `hardcase_accept_sample_rate`
-- [ ] **Gap D:** decide Android export path (Capacitor Filesystem/Share **or** documented browser-only + adb/inspect); document it
-- [ ] Storage (IndexedDB / Capacitor FS) + manual export bundle (manifest + traces + images/data-URLs)
+- [x] Create `exports/web/asem/hardcase.js`
+- [x] `buildDecisionTrace()` emits exactly `asem_rev3_trace_v1` using **real** ONNX filenames
+  - Note: trace defaults to `models/detector.onnx` and `models/classifier.onnx` from Stage 0.
+- [x] Failure tags: blur, poor_center, scale_ambiguous, side_angle_needed, family_confusion, gender_confusion, out_of_support, detector_missed
+- [x] Opt-in consent; local-only; disable works; **no auto-upload code path**
+  - Check: `tests/asem/hardcase_schema.test.js` covers consent-required local save and scans for network upload primitives.
+- [x] Log all abstained (consented) + sample accepted at `hardcase_accept_sample_rate`
+- [~] **Gap D:** decide Android export path (Capacitor Filesystem/Share **or** documented browser-only + adb/inspect); document it
+  - Needs review: Android/native export via Capacitor Filesystem/Share is not implemented in Rev 3. Rev-3 hard-case export is browser/WebView JSON export only; field package must validate/download via WebView debugging, device file sharing, or adb retrieval.
+- [x] Storage (IndexedDB / Capacitor FS) + manual export bundle (manifest + traces + images/data-URLs)
+  - Note: browser IndexedDB store and manual local JSON export helper are implemented; no automatic upload path exists.
 
 ## Stage 7 — app.js wiring
 
