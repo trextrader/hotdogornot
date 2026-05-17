@@ -1,0 +1,586 @@
+digraph SMA_Active_Object_Detector {
+    graph [
+        rankdir=LR,
+        bgcolor="#0B1020",
+        compound=true,
+        splines=curved,
+        overlap=false,
+        concentrate=false,
+        pad=0.35,
+        nodesep=0.72,
+        ranksep=1.05,
+        fontname="Segoe UI",
+        fontsize=22,
+        label="SMA Object Detector — Active Inspection, Evidence-Gated Classification, and Mobile Inference Architecture",
+        labelloc=t,
+        fontcolor="#EAF2FF"
+    ];
+
+    node [
+        shape=rect,
+        style="rounded,filled",
+        fontname="Segoe UI",
+        fontsize=13,
+        penwidth=1.4,
+        color="#6EA8FE",
+        fontcolor="#EAF2FF",
+        fillcolor="#17233D",
+        margin="0.12,0.08"
+    ];
+
+    edge [
+        color="#A8C7FA",
+        fontname="Segoe UI",
+        fontsize=11,
+        fontcolor="#DDEBFF",
+        arrowsize=0.8,
+        penwidth=1.25
+    ];
+
+    // ============================================================
+    // GLOBAL LEGEND
+    // ============================================================
+
+    subgraph cluster_legend {
+        label="Legend";
+        color="#334155";
+        fontcolor="#CBD5E1";
+        fillcolor="#101827";
+        style="rounded,filled";
+        fontsize=15;
+
+        L_data [
+            label="Data / I/O",
+            fillcolor="#123524",
+            color="#2DD4BF"
+        ];
+
+        L_model [
+            label="Neural Net / Model",
+            fillcolor="#2A1B4A",
+            color="#C084FC"
+        ];
+
+        L_logic [
+            label="Decision Logic",
+            fillcolor="#3B2608",
+            color="#FBBF24"
+        ];
+
+        L_mobile [
+            label="Mobile Runtime Module",
+            fillcolor="#1B2E4B",
+            color="#60A5FA"
+        ];
+
+        L_engineering [
+            label="Software Engineering / CI",
+            fillcolor="#302033",
+            color="#F472B6"
+        ];
+    }
+
+    // ============================================================
+    // PHASE 1 — DATASET + LABEL TAXONOMY
+    // ============================================================
+
+    subgraph cluster_dataset {
+        label="Phase 1 — Dataset, Label Taxonomy, and Evidence Targets";
+        color="#2DD4BF";
+        fontcolor="#CCFBF1";
+        fillcolor="#071E1A";
+        style="rounded,filled";
+        fontsize=17;
+
+        raw_images [
+            label="Raw Connector Images\nPhone photos / lab images / Kaggle / Colab assets\nMultiple lighting, angles, backgrounds",
+            fillcolor="#123524",
+            color="#2DD4BF"
+        ];
+
+        class_taxonomy [
+            label="10-Class SMA Taxonomy\nExamples:\n• SMA male straight\n• SMA female straight\n• RP-SMA male\n• RP-SMA female\n• right-angle\n• bulkhead\n• cable-end\n• board-mount",
+            fillcolor="#123524",
+            color="#2DD4BF"
+        ];
+
+        annotations [
+            label="Annotations\nBounding boxes / class labels\nOptional keypoints:\ncenter pin, socket, thread ring,\nelbow, flange, rear termination",
+            fillcolor="#123524",
+            color="#2DD4BF"
+        ];
+
+        evidence_schema [
+            label="Evidence Schema D_t\nVisible feature flags:\n• pin_visible\n• socket_visible\n• thread_visible\n• elbow_visible\n• flange_visible\n• rear_body_visible\n• crop_quality\n• blur / occlusion / glare",
+            fillcolor="#123524",
+            color="#2DD4BF"
+        ];
+
+        confusion_pairs [
+            label="Confusion-Pair Map\nClass-pair separator requirements:\nSMA male vs female → center pin/socket\nSMA vs RP-SMA → polarity evidence\nstraight vs right-angle → side-profile elbow\nbulkhead vs cable-end → flange/rear body",
+            fillcolor="#123524",
+            color="#2DD4BF"
+        ];
+
+        train_val_test [
+            label="Train / Validation / Real-Phone Test Split\nTraining: controlled + augmented\nValidation: held-out images\nRisk-coverage validation: real phone captures",
+            fillcolor="#123524",
+            color="#2DD4BF"
+        ];
+    }
+
+    raw_images -> annotations;
+    class_taxonomy -> annotations;
+    annotations -> evidence_schema;
+    annotations -> train_val_test;
+    class_taxonomy -> confusion_pairs;
+    evidence_schema -> confusion_pairs;
+
+    // ============================================================
+    // PHASE 2 — AUGMENTATION + PREPROCESSING
+    // ============================================================
+
+    subgraph cluster_preprocess {
+        label="Phase 2 — Preprocessing and Augmentation";
+        color="#38BDF8";
+        fontcolor="#E0F2FE";
+        fillcolor="#07192C";
+        style="rounded,filled";
+        fontsize=17;
+
+        image_preprocess [
+            label="Image Preprocessor\nResize / normalize / letterbox\nColor correction\nEXIF orientation fix\nQuality scoring",
+            fillcolor="#1B2E4B",
+            color="#60A5FA"
+        ];
+
+        augmentations [
+            label="Augmentations\nRotation, crop, blur, glare,\nshadow, compression,\nbackground variation,\nsmall-object scale jitter",
+            fillcolor="#1B2E4B",
+            color="#60A5FA"
+        ];
+
+        crop_generator [
+            label="Evidence Crop Generator\nCreates targeted regions:\n• center-contact crop\n• thread-ring crop\n• side-profile crop\n• flange crop\n• rear-body crop",
+            fillcolor="#1B2E4B",
+            color="#60A5FA"
+        ];
+
+        metadata_builder [
+            label="Metadata Builder\nStores:\nimage_id, class_id, bbox,\nkeypoint visibility,\nquality flags,\nphone/device source",
+            fillcolor="#1B2E4B",
+            color="#60A5FA"
+        ];
+    }
+
+    train_val_test -> image_preprocess;
+    image_preprocess -> augmentations;
+    augmentations -> crop_generator;
+    crop_generator -> metadata_builder;
+
+    // ============================================================
+    // PHASE 3 — MODEL CREATION / NETS
+    // ============================================================
+
+    subgraph cluster_models {
+        label="Phase 3 — Nets and Model Creation";
+        color="#C084FC";
+        fontcolor="#F3E8FF";
+        fillcolor="#160B2C";
+        style="rounded,filled";
+        fontsize=17;
+
+        base_detector [
+            label="Base Detector Net\nYOLO / EfficientDet / Mobile Detector\nInput: full frame\nOutput: connector bbox + objectness",
+            fillcolor="#2A1B4A",
+            color="#C084FC"
+        ];
+
+        backbone [
+            label="Shared Visual Backbone\nEfficientNetV2 / MobileNetV3 / ConvNeXt-Tiny\nExtracts compact embedding vector e_t",
+            fillcolor="#2A1B4A",
+            color="#C084FC"
+        ];
+
+        classifier_head [
+            label="Primary 10-Class Classifier Head\nInput: connector crop embedding\nOutput: logits over connector classes",
+            fillcolor="#2A1B4A",
+            color="#C084FC"
+        ];
+
+        evidence_heads [
+            label="Evidence Visibility Heads\nPredict D_t feature visibility:\nP(pin visible), P(socket visible),\nP(thread visible), P(elbow visible), etc.",
+            fillcolor="#2A1B4A",
+            color="#C084FC"
+        ];
+
+        specialized_heads [
+            label="Specialized Separator Heads\nSmall pairwise / group heads:\n• gender / polarity head\n• right-angle head\n• bulkhead/flange head\n• termination head",
+            fillcolor="#2A1B4A",
+            color="#C084FC"
+        ];
+
+        utility_policy_net [
+            label="Inspection Utility Policy\nScores candidate action j:\ncenter crop, thread crop,\nside crop, secondary head,\nhigh-res re-crop",
+            fillcolor="#2A1B4A",
+            color="#C084FC"
+        ];
+
+        calibration_layer [
+            label="Probability Calibration Layer\nTemperature scaling / isotonic calibration\nConverts logits → calibrated posterior π_t(c)",
+            fillcolor="#2A1B4A",
+            color="#C084FC"
+        ];
+
+        model_bundle [
+            label="Model Bundle\nbase_detector.tflite\nclassifier.tflite\nevidence_heads.tflite\nutility_policy.tflite\nlabels.json\nthresholds.json",
+            fillcolor="#2A1B4A",
+            color="#C084FC"
+        ];
+    }
+
+    metadata_builder -> base_detector;
+    metadata_builder -> backbone;
+    backbone -> classifier_head;
+    backbone -> evidence_heads;
+    backbone -> specialized_heads;
+    classifier_head -> calibration_layer;
+    evidence_heads -> calibration_layer;
+    specialized_heads -> calibration_layer;
+    utility_policy_net -> model_bundle;
+    calibration_layer -> model_bundle;
+    base_detector -> model_bundle;
+
+    // ============================================================
+    // PHASE 4 — TRAINING PIPELINE
+    // ============================================================
+
+    subgraph cluster_training {
+        label="Phase 4 — Training, Validation, Calibration, and Export";
+        color="#F472B6";
+        fontcolor="#FCE7F3";
+        fillcolor="#2A1024";
+        style="rounded,filled";
+        fontsize=17;
+
+        training_loop [
+            label="Training Loop\nLosses:\n• detector loss\n• class CE loss\n• evidence visibility BCE\n• pairwise separator loss\n• calibration objective",
+            fillcolor="#302033",
+            color="#F472B6"
+        ];
+
+        metrics [
+            label="Validation Metrics\nTop-1 accuracy\nTop-2 confusion\nper-class precision/recall\nECE calibration error\nrisk-coverage curve\nabstention rate",
+            fillcolor="#302033",
+            color="#F472B6"
+        ];
+
+        confusion_matrix [
+            label="Confusion Matrix Analysis\nFind high-risk class confusions\nBuild/update K_t separator map\nTune u_j(c,K_t)",
+            fillcolor="#302033",
+            color="#F472B6"
+        ];
+
+        threshold_tuning [
+            label="Threshold Tuning\nTune:\nτ_accept ∈ [0.995, 0.999]\nτ_margin ∈ [0.20, 0.35]\nA odds ∈ [20, 100]\nB odds ∈ [1/3, 1]\nmax inspection budget",
+            fillcolor="#302033",
+            color="#F472B6"
+        ];
+
+        export_tflite [
+            label="Mobile Export\nPyTorch → ONNX → TFLite / NNAPI\nQuantization: FP16 or INT8\nLatency + accuracy checks",
+            fillcolor="#302033",
+            color="#F472B6"
+        ];
+
+        regression_tests [
+            label="Regression Test Suite\nGolden images\nConfusion-pair tests\nThreshold gate tests\nReqVisible tests\nMobile parity tests",
+            fillcolor="#302033",
+            color="#F472B6"
+        ];
+    }
+
+    model_bundle -> training_loop [ltail=cluster_models];
+    training_loop -> metrics;
+    metrics -> confusion_matrix;
+    confusion_matrix -> threshold_tuning;
+    threshold_tuning -> export_tflite;
+    export_tflite -> regression_tests;
+    regression_tests -> model_bundle [label="validated bundle"];
+
+    // ============================================================
+    // PHASE 5 — MOBILE RUNTIME I/O
+    // ============================================================
+
+    subgraph cluster_mobile_io {
+        label="Phase 5 — Mobile Runtime I/O";
+        color="#60A5FA";
+        fontcolor="#DBEAFE";
+        fillcolor="#07182E";
+        style="rounded,filled";
+        fontsize=17;
+
+        camera_frame [
+            label="Camera Frame Input\nAndroid CameraX / iOS camera\nLive preview frame",
+            fillcolor="#1B2E4B",
+            color="#60A5FA"
+        ];
+
+        frame_quality [
+            label="Frame Quality Gate\nReject/flag:\nblur, glare, low light,\nocclusion, too small,\nout-of-focus",
+            fillcolor="#1B2E4B",
+            color="#60A5FA"
+        ];
+
+        detector_runtime [
+            label="Detector Runtime\nFind connector bbox\nCrop connector ROI\nTrack object across frames",
+            fillcolor="#1B2E4B",
+            color="#60A5FA"
+        ];
+
+        crop_runtime [
+            label="Runtime Crop Manager\nGenerates candidate crops j:\ncenter, thread, side,\nflange, rear body,\nhigh-res ROI",
+            fillcolor="#1B2E4B",
+            color="#60A5FA"
+        ];
+
+        runtime_state [
+            label="Runtime State S_t\nStores:\nπ_t(c), K_t, D_t,\ninspection history,\nbudget used,\nlatency, frame quality",
+            fillcolor="#1B2E4B",
+            color="#60A5FA"
+        ];
+    }
+
+    model_bundle -> detector_runtime [label="load TFLite bundle"];
+    camera_frame -> frame_quality;
+    frame_quality -> detector_runtime;
+    detector_runtime -> crop_runtime;
+    crop_runtime -> runtime_state;
+
+    // ============================================================
+    // PHASE 6 — ACTIVE INFERENCE LOOP
+    // ============================================================
+
+    subgraph cluster_active_loop {
+        label="Phase 6 — Active Inspection Loop";
+        color="#FBBF24";
+        fontcolor="#FEF3C7";
+        fillcolor="#2B1F07";
+        style="rounded,filled";
+        fontsize=17;
+
+        initial_classification [
+            label="Initial Classification\nRun base classifier on ROI\nlogits → calibrated π_t(c)",
+            fillcolor="#3B2608",
+            color="#FBBF24"
+        ];
+
+        candidate_set [
+            label="Candidate Set K_t\nKeep plausible classes:\nK_t = {c : π_t(c) above floor}\nUsually top-k or probability-mass set",
+            fillcolor="#3B2608",
+            color="#FBBF24"
+        ];
+
+        top_two [
+            label="Top-2 Selection\nc* = argmax_c π_t(c)\nc^(2) = argmax over K_t \\ {c*}",
+            fillcolor="#3B2608",
+            color="#FBBF24"
+        ];
+
+        req_visible [
+            label="Required Evidence Gate\nReqVisible(c*,D_t)=1\nChecks class-specific evidence:\npin/socket/thread/elbow/flange/rear body",
+            fillcolor="#3B2608",
+            color="#FBBF24"
+        ];
+
+        margin_gate [
+            label="Confidence + Margin Gates\nπ_t(c*) ≥ τ_accept\nπ_t(c*) - π_t(c^(2)) ≥ τ_margin",
+            fillcolor="#3B2608",
+            color="#FBBF24"
+        ];
+
+        sprt_gate [
+            label="SPRT-like Odds Gate\nΛ_t = log[π_t(c*) / π_t(c^(2))]\nAccept if Λ_t ≥ log A\nContinue if log B < Λ_t < log A",
+            fillcolor="#3B2608",
+            color="#FBBF24"
+        ];
+
+        utility_score [
+            label="Next Inspection Scoring\nj* = argmax_j [Σ_c∈K_t π_t(c) u_j(c,K_t)] / cost(j)\nChooses highest utility per latency/battery cost",
+            fillcolor="#3B2608",
+            color="#FBBF24"
+        ];
+
+        run_next_inspection [
+            label="Run Next Inspection j*\nExamples:\n• center-contact crop\n• thread geometry crop\n• side-profile crop\n• specialized separator head\n• request better angle",
+            fillcolor="#3B2608",
+            color="#FBBF24"
+        ];
+
+        belief_update [
+            label="Belief Update\nFuse new evidence z_j\nUpdate π_{t+1}(c)\nUpdate D_{t+1}\nLog inspection history",
+            fillcolor="#3B2608",
+            color="#FBBF24"
+        ];
+
+        budget_check [
+            label="Budget Check\nmax inspections\nmax latency\nthermal/battery constraints\nframe timeout",
+            fillcolor="#3B2608",
+            color="#FBBF24"
+        ];
+
+        accept_output [
+            label="ACCEPT\nReturn class c*\nwith probability, evidence flags,\nvisible proof crop,\nand decision trace",
+            fillcolor="#064E3B",
+            color="#34D399"
+        ];
+
+        abstain_output [
+            label="ABSTAIN / ASK FOR MORE EVIDENCE\nReturn uncertain result\nPrompt user:\nmove closer, rotate connector,\nshow pin/socket, improve light",
+            fillcolor="#4A1D1D",
+            color="#F87171"
+        ];
+    }
+
+    runtime_state -> initial_classification;
+    initial_classification -> candidate_set;
+    candidate_set -> top_two;
+    top_two -> margin_gate;
+    top_two -> sprt_gate;
+    runtime_state -> req_visible;
+    req_visible -> accept_output [label="visible"];
+    margin_gate -> sprt_gate [label="confidence + margin OK"];
+    sprt_gate -> accept_output [label="Λ_t ≥ log A AND gates OK"];
+    sprt_gate -> budget_check [label="not accepted"];
+    budget_check -> abstain_output [label="budget exhausted"];
+    budget_check -> utility_score [label="budget remains"];
+    utility_score -> run_next_inspection;
+    run_next_inspection -> belief_update;
+    belief_update -> runtime_state [label="π_t,D_t ← updated", constraint=false];
+
+    // ============================================================
+    // PHASE 7 — APPLICATION OUTPUTS
+    // ============================================================
+
+    subgraph cluster_outputs {
+        label="Phase 7 — App Outputs and Debug Artifacts";
+        color="#34D399";
+        fontcolor="#D1FAE5";
+        fillcolor="#06281F";
+        style="rounded,filled";
+        fontsize=17;
+
+        user_overlay [
+            label="User Overlay\nBounding box\nPredicted connector type\nConfidence\nRequired feature status\nGuidance prompt",
+            fillcolor="#123524",
+            color="#34D399"
+        ];
+
+        debug_panel [
+            label="Debug Panel\nπ_t distribution\nTop-2 margin\nΛ_t log odds\nK_t active set\ninspection count\nlatency per model",
+            fillcolor="#123524",
+            color="#34D399"
+        ];
+
+        trace_log [
+            label="Decision Trace Log\nFrame id\nc*, c^(2)\nD_t evidence flags\nj* inspections\naccept/abstain reason\nthreshold snapshot",
+            fillcolor="#123524",
+            color="#34D399"
+        ];
+
+        telemetry [
+            label="Validation Telemetry\nOptional local export:\nmisclassification reports\nabstention cases\nrisk-coverage samples\nreal-phone tuning set",
+            fillcolor="#123524",
+            color="#34D399"
+        ];
+    }
+
+    accept_output -> user_overlay;
+    abstain_output -> user_overlay;
+    accept_output -> debug_panel;
+    abstain_output -> debug_panel;
+    debug_panel -> trace_log;
+    trace_log -> telemetry;
+    telemetry -> threshold_tuning [label="offline tuning feedback", constraint=false];
+
+    // ============================================================
+    // PHASE 8 — SOFTWARE ENGINEERING ARCHITECTURE
+    // ============================================================
+
+    subgraph cluster_software {
+        label="Phase 8 — Software Engineering Modules";
+        color="#F97316";
+        fontcolor="#FFEDD5";
+        fillcolor="#2C1607";
+        style="rounded,filled";
+        fontsize=17;
+
+        repo_layout [
+            label="Repository Layout\n/app\n/models\n/training\n/reports\n/docs/diagrams\n/tests\n/scripts",
+            fillcolor="#3A220D",
+            color="#FDBA74"
+        ];
+
+        android_layer [
+            label="Android App Layer\nCameraX\nTFLite Interpreter\nJNI/Native optional\nUI overlay\nDebug APK / release APK",
+            fillcolor="#3A220D",
+            color="#FDBA74"
+        ];
+
+        inference_engine [
+            label="Inference Engine\nModelLoader\nDetectorRunner\nClassifierRunner\nEvidenceRunner\nPolicyRunner\nDecisionController",
+            fillcolor="#3A220D",
+            color="#FDBA74"
+        ];
+
+        data_contracts [
+            label="Data Contracts\nClassLabel\nEvidenceState D_t\nBeliefState π_t\nInspectionAction j\nDecisionResult\nTraceEvent",
+            fillcolor="#3A220D",
+            color="#FDBA74"
+        ];
+
+        config_files [
+            label="Config Files\nlabels.json\nthresholds.json\ninspection_policy.json\nmodel_manifest.json\nrisk_coverage_report.json",
+            fillcolor="#3A220D",
+            color="#FDBA74"
+        ];
+
+        test_harness [
+            label="Test Harness\nUnit tests\nGolden image tests\nDevice latency tests\nModel parity tests\nAcceptance gate tests\nAbstention tests",
+            fillcolor="#3A220D",
+            color="#FDBA74"
+        ];
+
+        ci_pipeline [
+            label="CI / Build Pipeline\nTrain notebook artifact check\nModel export validation\nAPK build\nSmoke test\nRelease artifact",
+            fillcolor="#3A220D",
+            color="#FDBA74"
+        ];
+    }
+
+    repo_layout -> android_layer;
+    repo_layout -> inference_engine;
+    inference_engine -> data_contracts;
+    data_contracts -> config_files;
+    config_files -> test_harness;
+    test_harness -> ci_pipeline;
+    ci_pipeline -> android_layer;
+
+    android_layer -> camera_frame [label="runtime entry", lhead=cluster_mobile_io];
+    inference_engine -> detector_runtime [label="runs models", lhead=cluster_mobile_io];
+    data_contracts -> runtime_state [label="typed state objects", lhead=cluster_mobile_io];
+
+    // ============================================================
+    // CRITICAL DECISION FLOW EDGES
+    // ============================================================
+
+    classifier_head -> initial_classification [label="π_t(c)", color="#C084FC"];
+    evidence_heads -> req_visible [label="D_t", color="#C084FC"];
+    specialized_heads -> run_next_inspection [label="separator evidence", color="#C084FC"];
+    utility_policy_net -> utility_score [label="u_j(c,K_t)", color="#C084FC"];
+    confusion_pairs -> utility_score [label="class-pair utilities", color="#2DD4BF"];
+    threshold_tuning -> margin_gate [label="τ_accept, τ_margin", color="#F472B6"];
+    threshold_tuning -> sprt_gate [label="A, B", color="#F472B6"];
+    threshold_tuning -> budget_check [label="max budget", color="#F472B6"];
+
+}
