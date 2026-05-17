@@ -2,28 +2,32 @@
  * RF Connector AI — Browser ONNX Runtime Inference
  *
  * Architecture:
- *   image → YOLO detector (ONNX) → crop each bbox → classifier (ONNX) → results
+ *   image → YOLO detector (ONNX, single-class "connector") → crop each bbox
+ *         → flat 10-class classifier (ONNX) → connector type + confidence
  *
  * Both models run entirely client-side via onnxruntime-web.
  * No server, no uploads, works offline once models are cached.
+ *
+ * 2026-05-17: rewired from the legacy multi-head attribute model to the
+ * flat 10-class EfficientNetV2-S classifier. The classifier ONNX bakes
+ * ImageNet normalization into the graph (NormalizedClassifier wrapper),
+ * so the JS feeds raw [0,1] pixels — do NOT re-apply mean/std here.
  */
 
 // --- Configuration -----------------------------------------------------------
 const DETECTOR_URL = "models/detector.onnx";
 const CLASSIFIER_URL = "models/classifier.onnx";
-const VOCABS_URL = "models/classifier_vocabs.json";
+const LABELS_URL = "models/classifier_labels.json";
 const DET_SIZE = 640;
-const CLS_SIZE = 384;
+let CLS_SIZE = 384; // overridden from classifier_labels.json input_size
 const CONF_THRESHOLD = 0.35;
 const NMS_IOU_THRESHOLD = 0.45;
-
-const FAMILY_NAMES = ["2.4MM", "2.92MM", "3.5MM"];
-const DISPLAY_HEADS = ["family", "side_a_gender", "precision_family", "polarity", "mount_style", "orientation"];
+const TOP_K = 3; // how many ranked guesses to show per detection
 
 // --- State -------------------------------------------------------------------
 let detectorSession = null;
 let classifierSession = null;
-let vocabs = null;
+let CLASS_NAMES = null; // flat 10-class label list (index == class id)
 
 // --- DOM Elements ------------------------------------------------------------
 const dropZone = document.getElementById("drop-zone");
@@ -44,6 +48,14 @@ const loadingText = document.getElementById("loading-text");
 // --- Model Loading -----------------------------------------------------------
 async function loadModels() {
   try {
+    modelStatus.textContent = "Loading labels…";
+    const lab = await (await fetch(LABELS_URL)).json();
+    CLASS_NAMES = lab.class_names;
+    if (lab.input_size) CLS_SIZE = lab.input_size;
+    if (!Array.isArray(CLASS_NAMES) || CLASS_NAMES.length === 0) {
+      throw new Error("classifier_labels.json has no class_names");
+    }
+
     modelStatus.textContent = "Loading detector…";
     ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
     detectorSession = await ort.InferenceSession.create(DETECTOR_URL, {
@@ -53,9 +65,7 @@ async function loadModels() {
     classifierSession = await ort.InferenceSession.create(CLASSIFIER_URL, {
       executionProviders: ["wasm"],
     });
-    const resp = await fetch(VOCABS_URL);
-    vocabs = await resp.json();
-    modelStatus.textContent = "Ready";
+    modelStatus.textContent = `Ready (${CLASS_NAMES.length} classes)`;
     modelStatus.className = "status-badge ready";
   } catch (e) {
     console.error("Model load error:", e);
@@ -90,6 +100,9 @@ function preprocessForDetector(imageData, size) {
 }
 
 function preprocessForClassifier(canvas, size) {
+  // The classifier ONNX (NormalizedClassifier wrapper) bakes ImageNet
+  // mean/std into the graph and expects raw [0,1] NCHW. Do NOT normalize
+  // here — doing so double-normalizes and destroys accuracy.
   const resized = document.createElement("canvas");
   resized.width = size;
   resized.height = size;
@@ -97,20 +110,18 @@ function preprocessForClassifier(canvas, size) {
   ctx.drawImage(canvas, 0, 0, size, size);
   const pixels = ctx.getImageData(0, 0, size, size).data;
   const float32 = new Float32Array(3 * size * size);
-  // ImageNet normalization
-  const mean = [0.485, 0.456, 0.406];
-  const std = [0.229, 0.224, 0.225];
   for (let i = 0; i < size * size; i++) {
-    float32[i] = (pixels[i * 4] / 255 - mean[0]) / std[0];
-    float32[size * size + i] = (pixels[i * 4 + 1] / 255 - mean[1]) / std[1];
-    float32[2 * size * size + i] = (pixels[i * 4 + 2] / 255 - mean[2]) / std[2];
+    float32[i] = pixels[i * 4] / 255;                       // R
+    float32[size * size + i] = pixels[i * 4 + 1] / 255;     // G
+    float32[2 * size * size + i] = pixels[i * 4 + 2] / 255;  // B
   }
   return new ort.Tensor("float32", float32, [1, 3, size, size]);
 }
 
 // --- YOLO Postprocessing -----------------------------------------------------
 function parseYoloOutput(output, scale, dx, dy, origW, origH) {
-  // YOLO output shape: [1, 4+nc, num_boxes] transposed
+  // YOLO output shape: [1, 4+nc, num_boxes]. Detector is single-class
+  // ("connector"), so nc=1 and the one class score is the box confidence.
   const data = output.data;
   const numBoxes = output.dims[2];
   const numClasses = output.dims[1] - 4;
@@ -122,10 +133,10 @@ function parseYoloOutput(output, scale, dx, dy, origW, origH) {
     const w = data[2 * numBoxes + i];
     const h = data[3 * numBoxes + i];
 
-    let bestClass = 0, bestScore = 0;
+    let bestScore = 0;
     for (let c = 0; c < numClasses; c++) {
       const score = data[(4 + c) * numBoxes + i];
-      if (score > bestScore) { bestScore = score; bestClass = c; }
+      if (score > bestScore) bestScore = score;
     }
     if (bestScore < CONF_THRESHOLD) continue;
 
@@ -138,7 +149,7 @@ function parseYoloOutput(output, scale, dx, dy, origW, origH) {
     boxes.push({
       x1: Math.max(0, x1), y1: Math.max(0, y1),
       x2: Math.min(origW, x2), y2: Math.min(origH, y2),
-      score: bestScore, classId: bestClass,
+      score: bestScore,
     });
   }
 
@@ -188,25 +199,19 @@ async function classifyDetection(img, box) {
   feeds[classifierSession.inputNames[0]] = tensor;
   const results = await classifierSession.run(feeds);
 
-  const attributes = {};
-  for (const headName of classifierSession.outputNames) {
-    const logits = Array.from(results[headName].data);
-    const probs = softmax(logits);
-    const bestIdx = probs.indexOf(Math.max(...probs));
-    const headVocab = vocabs[headName] || [];
-    attributes[headName] = {
-      label: headVocab[bestIdx] || `class_${bestIdx}`,
-      confidence: probs[bestIdx],
-    };
-  }
-  return attributes;
+  // Flat single head: one logits tensor of length == CLASS_NAMES.length
+  const logits = Array.from(results[classifierSession.outputNames[0]].data);
+  const probs = softmax(logits);
+  const ranked = probs
+    .map((p, idx) => ({ label: CLASS_NAMES[idx] || `class_${idx}`, confidence: p }))
+    .sort((a, b) => b.confidence - a.confidence);
+  return { top: ranked[0], ranked: ranked.slice(0, TOP_K) };
 }
 
 // --- Pipeline ----------------------------------------------------------------
 async function runPipeline(img) {
   showLoading("Running detector…");
 
-  // Detect
   const { tensor, scale, dx, dy } = preprocessForDetector(img, DET_SIZE);
   const detFeeds = {};
   detFeeds[detectorSession.inputNames[0]] = tensor;
@@ -214,12 +219,11 @@ async function runPipeline(img) {
   const detOutput = detResults[detectorSession.outputNames[0]];
   const boxes = parseYoloOutput(detOutput, scale, dx, dy, img.width, img.height);
 
-  // Classify each detection
   showLoading(`Classifying ${boxes.length} detection(s)…`);
   const predictions = [];
   for (const box of boxes) {
-    const attrs = await classifyDetection(img, box);
-    predictions.push({ box, attrs, detClass: FAMILY_NAMES[box.classId] || "unknown" });
+    const cls = await classifyDetection(img, box);
+    predictions.push({ box, cls });
   }
 
   hideLoading();
@@ -231,7 +235,6 @@ function renderResults(img, predictions) {
   dropZone.classList.add("hidden");
   resultsSection.classList.remove("hidden");
 
-  // Draw image with bounding boxes
   const ctx = outputCanvas.getContext("2d");
   outputCanvas.width = img.width;
   outputCanvas.height = img.height;
@@ -240,7 +243,7 @@ function renderResults(img, predictions) {
   const colors = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6"];
 
   predictions.forEach((pred, i) => {
-    const { box } = pred;
+    const { box, cls } = pred;
     const color = colors[i % colors.length];
     const w = box.x2 - box.x1, h = box.y2 - box.y1;
 
@@ -248,8 +251,7 @@ function renderResults(img, predictions) {
     ctx.lineWidth = Math.max(2, Math.min(img.width, img.height) * 0.004);
     ctx.strokeRect(box.x1, box.y1, w, h);
 
-    // Label background
-    const label = `${pred.attrs.family?.label || pred.detClass} ${(box.score * 100).toFixed(0)}%`;
+    const label = `${cls.top.label} ${(cls.top.confidence * 100).toFixed(0)}%`;
     ctx.font = `bold ${Math.max(14, img.width * 0.025)}px Inter, sans-serif`;
     const metrics = ctx.measureText(label);
     const lh = Math.max(18, img.width * 0.03);
@@ -259,7 +261,6 @@ function renderResults(img, predictions) {
     ctx.fillText(label, box.x1 + 6, box.y1 - 6);
   });
 
-  // Prediction cards
   predictionsDiv.innerHTML = "";
   if (predictions.length === 0) {
     predictionsDiv.innerHTML = `<div class="prediction-card"><p style="text-align:center;color:var(--text-dim)">No connectors detected. Try a clearer image.</p></div>`;
@@ -270,25 +271,25 @@ function renderResults(img, predictions) {
     const card = document.createElement("div");
     card.className = "prediction-card";
 
-    const conf = pred.box.score;
+    const top = pred.cls.top;
+    const conf = top.confidence;
     const confClass = conf > 0.8 ? "high" : conf > 0.5 ? "med" : "low";
-    const familyLabel = pred.attrs.family?.label || pred.detClass;
 
-    let attrsHtml = "";
-    for (const head of DISPLAY_HEADS) {
-      if (!pred.attrs[head]) continue;
-      const val = pred.attrs[head];
-      if (val.label === "not_applicable" || val.label === "unknown") continue;
-      const displayName = head.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-      attrsHtml += `<div class="attr-item"><div class="attr-label">${displayName}</div><div class="attr-value">${val.label.replace(/_/g, " ")} <span style="color:var(--text-dim)">${(val.confidence*100).toFixed(0)}%</span></div></div>`;
+    let ranksHtml = "";
+    for (const r of pred.cls.ranked) {
+      ranksHtml += `<div class="attr-item"><div class="attr-label">${r.label}</div><div class="attr-value">${(r.confidence * 100).toFixed(1)}%</div></div>`;
     }
 
     card.innerHTML = `
       <div class="det-header">
-        <span class="det-label">Detection ${i + 1}: ${familyLabel.replace(/_/g, " ")}</span>
+        <span class="det-label">Detection ${i + 1}: ${top.label}</span>
         <span class="det-conf ${confClass}">${(conf * 100).toFixed(1)}%</span>
       </div>
-      <div class="attr-grid">${attrsHtml}</div>`;
+      <div class="attr-grid">${ranksHtml}</div>
+      <div class="attr-item" style="margin-top:8px">
+        <div class="attr-label">Box confidence</div>
+        <div class="attr-value">${(pred.box.score * 100).toFixed(1)}%</div>
+      </div>`;
     predictionsDiv.appendChild(card);
   });
 }
@@ -301,7 +302,7 @@ function showLoading(text) {
 function hideLoading() { loadingOverlay.classList.add("hidden"); }
 
 function handleImage(source) {
-  if (!detectorSession || !classifierSession) {
+  if (!detectorSession || !classifierSession || !CLASS_NAMES) {
     alert("Models are still loading. Please wait.");
     return;
   }
@@ -312,7 +313,6 @@ function handleImage(source) {
   } else if (typeof source === "string") {
     img.src = source;
   } else {
-    // Canvas
     img.src = source.toDataURL("image/jpeg");
   }
 }

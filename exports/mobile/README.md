@@ -254,9 +254,9 @@ exports/mobile/
     app.js
     style.css
     models/
-      detector.onnx                  YOLO11n detector (~10 MB)
-      classifier.onnx                EfficientNetV2-S multi-head (~77 MB)
-      classifier_vocabs.json
+      detector.onnx                  YOLO11n single-class connector localizer (~10 MB)
+      classifier.onnx                EfficientNetV2-S flat 10-class (~77 MB)
+      classifier_labels.json         {class_names[10], input_size, ...}
   android/                           native Android project (Capacitor scaffold)
     app/src/main/AndroidManifest.xml
     app/build/outputs/apk/debug/app-debug.apk  (build output, gitignored)
@@ -311,9 +311,22 @@ with:
 - Mobile latency / thermal benchmarks live in the per-device benchmark
   reports under `reports/experiments/<run>/latency_report.md`.
 
-### Hard rule
+### 2026-05-17 architecture change
 
-Mobile exports must not silently drop heads, change attribute
-vocabularies, or break the legacy `/predict` response. Every exported
-artifact must match the head vocabulary recorded in
+The on-device classifier was **deliberately switched** from the legacy
+multi-head attribute model to a **flat 10-class** EfficientNetV2-S
+(`models/connector_classifier/classifier.onnx`, output `logits[1,10]`,
+ImageNet norm baked into the graph → feed raw `[0,1]`). `www/app.js`
+decodes a single softmax over `classifier_labels.json:class_names`;
+`classifier_vocabs.json` and the multi-head decode path are retired.
+
+Reviving the multi-head attribute heads (mount/orientation/polarity/
+termination/finish/side-gender) is a tracked **future** workstream — it
+would surface richer attributes on-device but needs vocab rework + a
+retrain. Until then the old "must match head_vocabs.json" rule below is
+**superseded** for the classifier (it still applies to any multi-head
+export you produce in future).
+
+Legacy rule (for multi-head exports only): mobile exports must not
+silently drop heads or change attribute vocabularies vs.
 `reports/experiments/<run>/head_vocabs.json`.
