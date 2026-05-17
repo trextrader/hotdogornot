@@ -136,23 +136,24 @@ file as each item completes.
 - [x] T8 deterministic `top2` ties
 - [x] T9 missing/malformed `thresholds.json` visible error (no silent defaults)
 - [x] T10 trace conforms to `asem_rev3_trace_v1`
-- [/] T11 no out-of-scope class in `exports/web` + `.dot` + tests
-  - In progress: decision/app tests scan Rev-3 web/test files; full `.dot` coverage waits on Stage 9 canonical diagram revision.
+- [x] T11 no out-of-scope class in `exports/web` + `.dot` + tests
+  - Check: `tests/asem/out_of_scope.test.js` scans `exports/web`, the canonical DOT, and `tests/asem`.
 - [x] T12 legacy `/predict`-style fields preserved
 - [x] T13 `s_ood` sign contract (`p_in_support=0.9 → s_ood≈0.1`, no `unsupported` trip)
-- [/] All pass; single command; non-flaky
-  - Check: `npm test` currently passes 37 tests; final T11 completion waits on Stage 9 DOT rewrite.
+- [x] All pass; single command; non-flaky
+  - Check: `npm test` passes 39 tests.
 
 ## Stage 9 — Canonical diagram revision
 
-- [ ] `fontname="Segoe UI"`; remove cluster-conflicting top-level `rank`
-- [ ] Remove TFLite/NNAPI/`*.tflite`; add ONNX Runtime Web/WASM/WebGL/`*.onnx`
-- [ ] Replace taxonomy examples with the locked 10 classes; remove RP-SMA/right-angle/bulkhead/cable-end/board-mount
-- [ ] Add Rev-3 path nodes (camera→detector→ROI→`Q_t`→classifier→temp→support→Stage-0 controller→ACCEPT/ABSTAIN)
-- [ ] Add 5 abstention outputs incl. `no_connector_found`/`low_box_confidence`
-- [ ] Add Hard-Case Pool feedback loop (capture→consent/storage→tag→export→labeling→retrain)
-- [ ] Probes → future Rev 5–6 cluster; SPRT/Λ_t scoped to future loop; dashed `Q_t`→future-probe edge
-- [ ] Render SVG + PNG (dpi 400); no rankset/font warnings; no out-of-scope/no TFLite
+- [x] `fontname="Segoe UI"`; remove cluster-conflicting top-level `rank`
+- [x] Remove TFLite/NNAPI/`*.tflite`; add ONNX Runtime Web/WASM/WebGL/`*.onnx`
+- [x] Replace taxonomy examples with the locked 10 classes; remove RP-SMA/right-angle/bulkhead/cable-end/board-mount
+- [x] Add Rev-3 path nodes (camera→detector→ROI→`Q_t`→classifier→temp→support→Stage-0 controller→ACCEPT/ABSTAIN)
+- [x] Add 5 abstention outputs incl. `no_connector_found`/`low_box_confidence`
+- [x] Add Hard-Case Pool feedback loop (capture→consent/storage→tag→export→labeling→retrain)
+- [x] Probes → future Rev 5–6 cluster; SPRT/Λ_t scoped to future loop; dashed `Q_t`→future-probe edge
+- [~] Render SVG + PNG (dpi 400); no rankset/font warnings; no out-of-scope/no TFLite
+  - Needs review: SVG and PNG rendered, out-of-scope/native terms are removed, and the edge-label warning was fixed. Graphviz still emits `IDWriteFontFamily::GetFont failed with error code 88985004` while using required `fontname="Segoe UI"` on this Windows host.
 
 ## Stage 10 — Browser smoke test
 
