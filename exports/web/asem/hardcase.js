@@ -198,10 +198,6 @@
     return JSON.stringify(payload, null, 2);
   }
 
-  function createDownloadPayload(traces) {
-    return exportHardcasesJson(traces);
-  }
-
   async function saveHardcaseLocal(caseRecord) {
     const cfg = caseRecord || {};
     if (cfg.consent !== true) {
@@ -364,11 +360,9 @@
     buildDecisionTrace,
     validateDecisionTrace,
     shouldLogHardcase,
-    shouldLogHardCase: shouldLogHardcase,
     normalizeFailureTag,
     saveHardcaseLocal,
     exportHardcasesJson,
-    createDownloadPayload,
     downloadJson,
     IndexedDbHardCaseStore,
   };
