@@ -18,9 +18,9 @@
 const DETECTOR_URL = "models/detector.onnx";
 const CLASSIFIER_URL = "models/classifier.onnx";
 const LABELS_URL = "models/classifier_labels.json";
+const THRESHOLDS_URL = "thresholds.json";
 const DET_SIZE = 640;
 let CLS_SIZE = 384; // overridden from classifier_labels.json input_size
-const CONF_THRESHOLD = 0.35;
 const NMS_IOU_THRESHOLD = 0.45;
 const TOP_K = 3; // how many ranked guesses to show per detection
 
@@ -28,6 +28,7 @@ const TOP_K = 3; // how many ranked guesses to show per detection
 let detectorSession = null;
 let classifierSession = null;
 let CLASS_NAMES = null; // flat 10-class label list (index == class id)
+let THRESHOLDS = null; // validated Rev-3 thresholds bundle
 
 // --- DOM Elements ------------------------------------------------------------
 const dropZone = document.getElementById("drop-zone");
@@ -48,6 +49,9 @@ const loadingText = document.getElementById("loading-text");
 // --- Model Loading -----------------------------------------------------------
 async function loadModels() {
   try {
+    modelStatus.textContent = "Loading thresholds…";
+    THRESHOLDS = await window.AsemThresholds.loadThresholds(THRESHOLDS_URL);
+
     modelStatus.textContent = "Loading labels…";
     const lab = await (await fetch(LABELS_URL)).json();
     CLASS_NAMES = lab.class_names;
@@ -69,7 +73,7 @@ async function loadModels() {
     modelStatus.className = "status-badge ready";
   } catch (e) {
     console.error("Model load error:", e);
-    modelStatus.textContent = "Model load failed — see console";
+    modelStatus.textContent = e.message || "Model load failed — see console";
     modelStatus.className = "status-badge error";
   }
 }
@@ -119,7 +123,7 @@ function preprocessForClassifier(canvas, size) {
 }
 
 // --- YOLO Postprocessing -----------------------------------------------------
-function parseYoloOutput(output, scale, dx, dy, origW, origH) {
+function parseYoloOutput(output, scale, dx, dy, origW, origH, minScore) {
   // YOLO output shape: [1, 4+nc, num_boxes]. Detector is single-class
   // ("connector"), so nc=1 and the one class score is the box confidence.
   const data = output.data;
@@ -138,7 +142,7 @@ function parseYoloOutput(output, scale, dx, dy, origW, origH) {
       const score = data[(4 + c) * numBoxes + i];
       if (score > bestScore) bestScore = score;
     }
-    if (bestScore < CONF_THRESHOLD) continue;
+    if (bestScore < minScore) continue;
 
     // Convert from letterbox coords to original image coords
     const x1 = ((cx - w / 2) - dx) / scale;
@@ -217,7 +221,7 @@ async function runPipeline(img) {
   detFeeds[detectorSession.inputNames[0]] = tensor;
   const detResults = await detectorSession.run(detFeeds);
   const detOutput = detResults[detectorSession.outputNames[0]];
-  const boxes = parseYoloOutput(detOutput, scale, dx, dy, img.width, img.height);
+  const boxes = parseYoloOutput(detOutput, scale, dx, dy, img.width, img.height, THRESHOLDS.box_min);
 
   showLoading(`Classifying ${boxes.length} detection(s)…`);
   const predictions = [];
@@ -302,7 +306,7 @@ function showLoading(text) {
 function hideLoading() { loadingOverlay.classList.add("hidden"); }
 
 function handleImage(source) {
-  if (!detectorSession || !classifierSession || !CLASS_NAMES) {
+  if (!detectorSession || !classifierSession || !CLASS_NAMES || !THRESHOLDS) {
     alert("Models are still loading. Please wait.");
     return;
   }

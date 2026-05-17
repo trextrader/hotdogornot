@@ -32,20 +32,24 @@ file as each item completes.
 
 ## Stage 1 — thresholds.json + fail-loud loader
 
-- [ ] Create `exports/web/thresholds.json` with the Stage-1 content (incl. `support_calibration` percentiles = `null`)
-- [ ] Implement loader: validate top-level + `q` keys; finite numerics; `calibration_T>0`; `hardcase_accept_sample_rate∈[0,1]`
-- [ ] Missing/malformed → visible startup error; **no silent defaults**
-- [ ] Remove every hardcoded decision constant from `app.js` (`box_min/accept/margin/unsupported/q.*`)
+- [x] Create `exports/web/thresholds.json` with the Stage-1 content (incl. `support_calibration` percentiles = `null`)
+- [x] Implement loader: validate top-level + `q` keys; finite numerics; `calibration_T>0`; `hardcase_accept_sample_rate∈[0,1]`
+  - Note: loader lives in `exports/web/asem/thresholds.js`; support percentiles may be both `null` until Stage 3, but malformed/mismatched values fail.
+- [x] Missing/malformed → visible startup error; **no silent defaults**
+  - Note: `app.js` blocks startup on threshold load/validation failure and shows the error in the model status badge.
+- [x] Remove every hardcoded decision constant from `app.js` (`box_min/accept/margin/unsupported/q.*`)
+  - Note: detector filtering now uses validated `THRESHOLDS.box_min`; no Rev-3 decision constants are hardcoded in `app.js`.
 
 ## Stage 2 — support.js: calibration + logit-energy s_ood
 
-- [ ] Create `exports/web/asem/support.js`
-- [ ] `softmaxWithTemperature(logits,T)` — stable; throws on `T<=0`/non-finite/empty
-- [ ] `logsumexp(values)` — max-subtraction stable
-- [ ] `energyScoreFromLogits(logits,T)` = `-T*logsumexp(logits/T)`
-- [ ] `normalizeEnergyToSOod(energy,calibration)` — minmax→`clamp01`; **throws if percentiles null/missing**
-- [ ] `computeSupportScore(...)` — logit-energy baseline; never requires embedding; returns `{s_ood,method:"energy",energy}`
-- [ ] Sign contract comment + behavior: larger `s_ood` = more unsupported
+- [x] Create `exports/web/asem/support.js`
+- [x] `softmaxWithTemperature(logits,T)` — stable; throws on `T<=0`/non-finite/empty
+- [x] `logsumexp(values)` — max-subtraction stable
+- [x] `energyScoreFromLogits(logits,T)` = `-T*logsumexp(logits/T)`
+- [x] `normalizeEnergyToSOod(energy,calibration)` — minmax→`clamp01`; **throws if percentiles null/missing**
+- [x] `computeSupportScore(...)` — logit-energy baseline; never requires embedding; returns `{s_ood,method:"energy",energy}`
+- [x] Sign contract comment + behavior: larger `s_ood` = more unsupported
+  - Note: `sOodFromInSupportProbability(0.9)` returns `0.1`; decision code must reject only when `s_ood >= thresholds.unsupported`.
 
 ## Stage 3 — Support-gate calibration measurement (gap-closer, hard dependency)
 

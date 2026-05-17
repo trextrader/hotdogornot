@@ -1,0 +1,22 @@
+{
+  "schema_version": "asem_rev3_thresholds_v1",
+  "thresholds_version": "rev3_initial_2026_05_17",
+  "box_min": 0.25,
+  "accept": 0.85,
+  "margin": 0.2,
+  "unsupported": 0.6,
+  "q": {
+    "blur_var_min": 60,
+    "roi_scale_min": 0.08,
+    "glare_frac_max": 0.2,
+    "oblique_proxy_max": 0.65,
+    "center_res_min": 0.85
+  },
+  "support_calibration": {
+    "method": "energy_minmax",
+    "energy_in_support_p05": null,
+    "energy_in_support_p95": null
+  },
+  "hardcase_accept_sample_rate": 0.05,
+  "calibration_T": 1
+}
