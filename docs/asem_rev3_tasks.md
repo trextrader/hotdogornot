@@ -124,21 +124,24 @@ file as each item completes.
 
 ## Stage 8 — Tests (13 acceptance + infra)
 
-- [ ] Select/confirm runner (prefer `node:test`); add npm script; document command
-- [ ] T1 `no_connector_found` (box_conf<box_min)
-- [ ] T2 `need_better_focus` (blur/glare/low center)
-- [ ] T3 `need_second_angle` (oblique/face)
-- [ ] T4 `unsupported_connector` (s_ood≥unsupported, Q_t OK)
-- [ ] T5 ACCEPT only when all gates pass
-- [ ] T6 `ambiguous` (support+quality OK, prob/margin fail)
-- [ ] T7 required-visible failure → focus/angle, **never** `ambiguous`
-- [ ] T8 deterministic `top2` ties
-- [ ] T9 missing/malformed `thresholds.json` visible error (no silent defaults)
-- [ ] T10 trace conforms to `asem_rev3_trace_v1`
-- [ ] T11 no out-of-scope class in `exports/web` + `.dot` + tests
-- [ ] T12 legacy `/predict`-style fields preserved
-- [ ] T13 `s_ood` sign contract (`p_in_support=0.9 → s_ood≈0.1`, no `unsupported` trip)
-- [ ] All pass; single command; non-flaky
+- [x] Select/confirm runner (prefer `node:test`); add npm script; document command
+  - Note: root `npm test` runs `node --test tests/asem/*.test.js`.
+- [x] T1 `no_connector_found` (box_conf<box_min)
+- [x] T2 `need_better_focus` (blur/glare/low center)
+- [x] T3 `need_second_angle` (oblique/face)
+- [x] T4 `unsupported_connector` (s_ood≥unsupported, Q_t OK)
+- [x] T5 ACCEPT only when all gates pass
+- [x] T6 `ambiguous` (support+quality OK, prob/margin fail)
+- [x] T7 required-visible failure → focus/angle, **never** `ambiguous`
+- [x] T8 deterministic `top2` ties
+- [x] T9 missing/malformed `thresholds.json` visible error (no silent defaults)
+- [x] T10 trace conforms to `asem_rev3_trace_v1`
+- [/] T11 no out-of-scope class in `exports/web` + `.dot` + tests
+  - In progress: decision/app tests scan Rev-3 web/test files; full `.dot` coverage waits on Stage 9 canonical diagram revision.
+- [x] T12 legacy `/predict`-style fields preserved
+- [x] T13 `s_ood` sign contract (`p_in_support=0.9 → s_ood≈0.1`, no `unsupported` trip)
+- [/] All pass; single command; non-flaky
+  - Check: `npm test` currently passes 37 tests; final T11 completion waits on Stage 9 DOT rewrite.
 
 ## Stage 9 — Canonical diagram revision
 

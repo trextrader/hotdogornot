@@ -1,0 +1,8 @@
+{
+  "name": "hotdogornot-rev3-tests",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test tests/asem/*.test.js"
+  }
+}
