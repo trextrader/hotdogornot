@@ -111,12 +111,16 @@ file as each item completes.
 
 ## Stage 7 — app.js wiring
 
-- [ ] Import support/quality/decision/hardcase
-- [ ] Startup: load+validate thresholds (block inference if invalid); load labels from `classifier_labels.json` (10, locked, order from file)
-- [ ] Flow: detector → ROI → `Q_t` → classifier logits → temp softmax → `s_ood` → `decide()` → render → maybe log
-- [ ] Preserve legacy fields verbatim; add `asem_rev3` object alongside
-- [ ] Render distinct UI for ACCEPT + all 5 abstentions; debug panel: top-k, margin, `s_ood`, `Q_t`, `thresholds_version`
-- [ ] No out-of-scope class strings
+- [x] Import support/quality/decision/hardcase
+- [x] Startup: load+validate thresholds (block inference if invalid); load labels from `classifier_labels.json` (10, locked, order from file)
+  - Check: headless Chrome loaded `index.html` from local HTTP server and reached `Ready (10 classes)`.
+- [x] Flow: detector → ROI → `Q_t` → classifier logits → temp softmax → `s_ood` → `decide()` → render → maybe log
+  - Note: support scoring is wired to fail loudly until Stage 3 writes non-null energy percentiles.
+- [x] Preserve legacy fields verbatim; add `asem_rev3` object alongside
+  - Note: legacy `top`/`ranked` UI fields remain, and `legacy_output` keeps `class`, `confidence`, `bbox`, and `top_k` alongside `asem_rev3`.
+- [x] Render distinct UI for ACCEPT + all 5 abstentions; debug panel: top-k, margin, `s_ood`, `Q_t`, `thresholds_version`
+- [x] No out-of-scope class strings
+  - Check: app wiring uses labels from `classifier_labels.json`; no class labels are hardcoded in `app.js`.
 
 ## Stage 8 — Tests (13 acceptance + infra)
 

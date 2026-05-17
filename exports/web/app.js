@@ -19,6 +19,7 @@ const DETECTOR_URL = "models/detector.onnx";
 const CLASSIFIER_URL = "models/classifier.onnx";
 const LABELS_URL = "models/classifier_labels.json";
 const THRESHOLDS_URL = "thresholds.json";
+const MODEL_BUNDLE_ID = "rev3_web_bundle";
 const DET_SIZE = 640;
 let CLS_SIZE = 384; // overridden from classifier_labels.json input_size
 const NMS_IOU_THRESHOLD = 0.45;
@@ -29,6 +30,7 @@ let detectorSession = null;
 let classifierSession = null;
 let CLASS_NAMES = null; // flat 10-class label list (index == class id)
 let THRESHOLDS = null; // validated Rev-3 thresholds bundle
+let hardcaseStore = null;
 
 // --- DOM Elements ------------------------------------------------------------
 const dropZone = document.getElementById("drop-zone");
@@ -45,10 +47,17 @@ const resetBtn = document.getElementById("reset-btn");
 const modelStatus = document.getElementById("model-status");
 const loadingOverlay = document.getElementById("loading-overlay");
 const loadingText = document.getElementById("loading-text");
+const hardcaseConsent = document.getElementById("hardcase-consent");
+const hardcaseExportBtn = document.getElementById("hardcase-export-btn");
+const hardcaseStatus = document.getElementById("hardcase-status");
 
 // --- Model Loading -----------------------------------------------------------
 async function loadModels() {
   try {
+    assertRev3HelpersLoaded();
+    hardcaseStore = new window.AsemHardcase.IndexedDbHardCaseStore();
+    initializeHardcaseControls();
+
     modelStatus.textContent = "Loading thresholds…";
     THRESHOLDS = await window.AsemThresholds.loadThresholds(THRESHOLDS_URL);
 
@@ -58,6 +67,9 @@ async function loadModels() {
     if (lab.input_size) CLS_SIZE = lab.input_size;
     if (!Array.isArray(CLASS_NAMES) || CLASS_NAMES.length === 0) {
       throw new Error("classifier_labels.json has no class_names");
+    }
+    if (CLASS_NAMES.length !== 10) {
+      throw new Error("classifier_labels.json must contain the locked 10-class Rev-3 label set");
     }
 
     modelStatus.textContent = "Loading detector…";
@@ -75,6 +87,49 @@ async function loadModels() {
     console.error("Model load error:", e);
     modelStatus.textContent = e.message || "Model load failed — see console";
     modelStatus.className = "status-badge error";
+  }
+}
+
+function initializeHardcaseControls() {
+  if (!hardcaseConsent || !hardcaseExportBtn || !hardcaseStatus || !hardcaseStore) return;
+  hardcaseStore.hasConsent()
+    .then((enabled) => {
+      hardcaseConsent.checked = enabled;
+      hardcaseStatus.textContent = enabled ? "Local hard-case logging enabled" : "";
+    })
+    .catch(() => {
+      hardcaseStatus.textContent = "Local hard-case storage unavailable";
+    });
+  hardcaseConsent.addEventListener("change", async () => {
+    try {
+      await hardcaseStore.setConsent(hardcaseConsent.checked);
+      hardcaseStatus.textContent = hardcaseConsent.checked ? "Local hard-case logging enabled" : "Local hard-case logging disabled";
+    } catch (err) {
+      hardcaseStatus.textContent = "Could not update local logging consent";
+      hardcaseConsent.checked = false;
+    }
+  });
+  hardcaseExportBtn.addEventListener("click", async () => {
+    try {
+      const jsonText = await hardcaseStore.exportJson();
+      window.AsemHardcase.downloadJson(`asem_rev3_hardcases_${Date.now()}.json`, jsonText);
+      hardcaseStatus.textContent = "Export JSON created";
+    } catch (err) {
+      hardcaseStatus.textContent = "Export unavailable in this WebView";
+      console.warn("Hard-case export failed:", err);
+    }
+  });
+}
+
+function assertRev3HelpersLoaded() {
+  const missing = [];
+  if (!window.AsemThresholds) missing.push("thresholds");
+  if (!window.AsemSupport) missing.push("support");
+  if (!window.AsemQuality) missing.push("quality");
+  if (!window.AsemDecision) missing.push("decision");
+  if (!window.AsemHardcase) missing.push("hardcase");
+  if (missing.length > 0) {
+    throw new Error(`Rev-3 helper load failed: ${missing.join(", ")}`);
   }
 }
 
@@ -181,14 +236,6 @@ function iou(a, b) {
   return inter / (areaA + areaB - inter + 1e-6);
 }
 
-// --- Classification ----------------------------------------------------------
-function softmax(arr) {
-  const max = Math.max(...arr);
-  const exps = arr.map(x => Math.exp(x - max));
-  const sum = exps.reduce((a, b) => a + b, 0);
-  return exps.map(x => x / sum);
-}
-
 async function classifyDetection(img, box) {
   // Crop detection from image
   const cropCanvas = document.createElement("canvas");
@@ -197,6 +244,14 @@ async function classifyDetection(img, box) {
   cropCanvas.height = Math.max(1, Math.round(h));
   const ctx = cropCanvas.getContext("2d");
   ctx.drawImage(img, box.x1, box.y1, w, h, 0, 0, cropCanvas.width, cropCanvas.height);
+  const roiImageData = ctx.getImageData(0, 0, cropCanvas.width, cropCanvas.height);
+  const quality = window.AsemQuality.estimateQuality({
+    frameWidth: img.width,
+    frameHeight: img.height,
+    roiImageData,
+    bbox: box,
+    thresholds: THRESHOLDS,
+  });
 
   const tensor = preprocessForClassifier(cropCanvas, CLS_SIZE);
   const feeds = {};
@@ -205,36 +260,160 @@ async function classifyDetection(img, box) {
 
   // Flat single head: one logits tensor of length == CLASS_NAMES.length
   const logits = Array.from(results[classifierSession.outputNames[0]].data);
-  const probs = softmax(logits);
-  const ranked = probs
-    .map((p, idx) => ({ label: CLASS_NAMES[idx] || `class_${idx}`, confidence: p }))
-    .sort((a, b) => b.confidence - a.confidence);
-  return { top: ranked[0], ranked: ranked.slice(0, TOP_K) };
+  const probabilities = window.AsemSupport.softmaxWithTemperature(logits, THRESHOLDS.calibration_T);
+  const rankedFull = window.AsemDecision
+    .topK(probabilities, CLASS_NAMES, CLASS_NAMES.length)
+    .map((r) => ({ label: r.class_name, confidence: r.prob, index: r.index }));
+  const support = window.AsemSupport.computeSupportScore({
+    logits,
+    thresholds: THRESHOLDS,
+  });
+  const decision = window.AsemDecision.decide({
+    box_conf: box.score,
+    quality,
+    probabilities,
+    labels: CLASS_NAMES,
+    s_ood: support.s_ood,
+    thresholds: THRESHOLDS,
+    traceBase: { model_bundle_id: MODEL_BUNDLE_ID, thresholds_version: THRESHOLDS.thresholds_version },
+  });
+  const top = rankedFull[0];
+  const second = rankedFull[1] || { label: "", confidence: 0 };
+  const topAlternatives = rankedFull.slice(0, 5);
+  const legacyOutput = {
+    class: top.label,
+    confidence: top.confidence,
+    bbox: {
+      x1: box.x1,
+      y1: box.y1,
+      x2: box.x2,
+      y2: box.y2,
+      score: box.score,
+    },
+    top_k: rankedFull.slice(0, TOP_K),
+  };
+  const trace = window.AsemHardcase.buildDecisionTrace({
+    model_bundle_id: MODEL_BUNDLE_ID,
+    thresholds_version: THRESHOLDS.thresholds_version,
+    frame: {
+      full_frame_saved: false,
+      roi_saved: false,
+      frame_width: img.width,
+      frame_height: img.height,
+      roi_bbox_xyxy: [box.x1, box.y1, box.x2, box.y2],
+      box_conf: box.score,
+    },
+    quality,
+    classification: {
+      top1: top.label,
+      top1_prob: top.confidence,
+      top2: second.label,
+      top2_prob: second.confidence,
+      margin: top.confidence - second.confidence,
+      topk: topAlternatives.map((r) => ({ class: r.label, prob: r.confidence })),
+    },
+    support: {
+      s_ood: support.s_ood,
+      method: support.method,
+      unsupported_threshold: THRESHOLDS.unsupported,
+    },
+    decision,
+    thresholds_snapshot: THRESHOLDS,
+  });
+  const asem_rev3 = {
+    status: decision.status,
+    reason: decision.reason,
+    user_guidance: decision.user_guidance,
+    top1: decision.top1 || { class_name: top.label, prob: top.confidence, index: top.index },
+    top2: decision.top2 || { class_name: second.label, prob: second.confidence, index: second.index },
+    margin: top.confidence - second.confidence,
+    s_ood: support.s_ood,
+    support_method: support.method,
+    quality,
+    thresholds_version: THRESHOLDS.thresholds_version,
+    trace,
+  };
+  return {
+    top,
+    ranked: rankedFull.slice(0, TOP_K),
+    logits,
+    probabilities,
+    quality,
+    support,
+    decision,
+    legacy_output: legacyOutput,
+    asem_rev3,
+  };
 }
 
 // --- Pipeline ----------------------------------------------------------------
 async function runPipeline(img) {
-  showLoading("Running detector…");
+  try {
+    showLoading("Running detector…");
 
-  const { tensor, scale, dx, dy } = preprocessForDetector(img, DET_SIZE);
-  const detFeeds = {};
-  detFeeds[detectorSession.inputNames[0]] = tensor;
-  const detResults = await detectorSession.run(detFeeds);
-  const detOutput = detResults[detectorSession.outputNames[0]];
-  const boxes = parseYoloOutput(detOutput, scale, dx, dy, img.width, img.height, THRESHOLDS.box_min);
+    const { tensor, scale, dx, dy } = preprocessForDetector(img, DET_SIZE);
+    const detFeeds = {};
+    detFeeds[detectorSession.inputNames[0]] = tensor;
+    const detResults = await detectorSession.run(detFeeds);
+    const detOutput = detResults[detectorSession.outputNames[0]];
+    const boxes = parseYoloOutput(detOutput, scale, dx, dy, img.width, img.height, THRESHOLDS.box_min);
+    if (boxes.length === 0) {
+      const decision = {
+        status: "ABSTAIN",
+        reason: "no_connector_found",
+        user_guidance: window.AsemDecision.GUIDANCE.no_connector_found,
+      };
+      const trace = window.AsemHardcase.buildDecisionTrace({
+        model_bundle_id: MODEL_BUNDLE_ID,
+        thresholds_version: THRESHOLDS.thresholds_version,
+        frame: {
+          full_frame_saved: false,
+          roi_saved: false,
+          frame_width: img.width,
+          frame_height: img.height,
+          roi_bbox_xyxy: [0, 0, 0, 0],
+          box_conf: 0,
+        },
+        quality: { dominant: "none" },
+        classification: { topk: [] },
+        support: { s_ood: 0, method: "energy", unsupported_threshold: THRESHOLDS.unsupported },
+        decision,
+        thresholds_snapshot: THRESHOLDS,
+      });
+      await maybeLogHardcase(trace, decision);
+    }
 
-  showLoading(`Classifying ${boxes.length} detection(s)…`);
-  const predictions = [];
-  for (const box of boxes) {
-    const cls = await classifyDetection(img, box);
-    predictions.push({ box, cls });
+    showLoading(`Classifying ${boxes.length} detection(s)…`);
+    const predictions = [];
+    for (const box of boxes) {
+      const cls = await classifyDetection(img, box);
+      predictions.push({ box, cls });
+      await maybeLogHardcase(cls.asem_rev3.trace, cls.decision);
+    }
+
+    hideLoading();
+    renderResults(img, predictions);
+  } catch (err) {
+    hideLoading();
+    console.error("Inference error:", err);
+    renderInferenceError(img, err);
   }
-
-  hideLoading();
-  renderResults(img, predictions);
 }
 
 // --- Rendering ---------------------------------------------------------------
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function pct(value, digits = 1) {
+  return `${(value * 100).toFixed(digits)}%`;
+}
+
 function renderResults(img, predictions) {
   dropZone.classList.add("hidden");
   resultsSection.classList.remove("hidden");
@@ -267,7 +446,14 @@ function renderResults(img, predictions) {
 
   predictionsDiv.innerHTML = "";
   if (predictions.length === 0) {
-    predictionsDiv.innerHTML = `<div class="prediction-card"><p style="text-align:center;color:var(--text-dim)">No connectors detected. Try a clearer image.</p></div>`;
+    predictionsDiv.innerHTML = `
+      <div class="prediction-card">
+        <div class="decision-banner abstain">
+          <span class="decision-status">ABSTAIN</span>
+          <span class="decision-reason">no_connector_found</span>
+        </div>
+        <p class="guidance">No connector was found clearly enough. Move closer and center the connector.</p>
+      </div>`;
     return;
   }
 
@@ -277,25 +463,56 @@ function renderResults(img, predictions) {
 
     const top = pred.cls.top;
     const conf = top.confidence;
+    const asem = pred.cls.asem_rev3;
     const confClass = conf > 0.8 ? "high" : conf > 0.5 ? "med" : "low";
+    const bannerClass = asem.status === "ACCEPT" ? "accept" : "abstain";
 
     let ranksHtml = "";
     for (const r of pred.cls.ranked) {
-      ranksHtml += `<div class="attr-item"><div class="attr-label">${r.label}</div><div class="attr-value">${(r.confidence * 100).toFixed(1)}%</div></div>`;
+      ranksHtml += `<div class="attr-item"><div class="attr-label">${escapeHtml(r.label)}</div><div class="attr-value">${pct(r.confidence)}</div></div>`;
     }
 
     card.innerHTML = `
-      <div class="det-header">
-        <span class="det-label">Detection ${i + 1}: ${top.label}</span>
-        <span class="det-conf ${confClass}">${(conf * 100).toFixed(1)}%</span>
+      <div class="decision-banner ${bannerClass}">
+        <span class="decision-status">${escapeHtml(asem.status)}</span>
+        <span class="decision-reason">${escapeHtml(asem.reason)}</span>
       </div>
+      <div class="det-header">
+        <span class="det-label">Detection ${i + 1}: ${escapeHtml(top.label)}</span>
+        <span class="det-conf ${confClass}">${pct(conf)}</span>
+      </div>
+      <p class="guidance">${escapeHtml(asem.user_guidance)}</p>
       <div class="attr-grid">${ranksHtml}</div>
       <div class="attr-item" style="margin-top:8px">
         <div class="attr-label">Box confidence</div>
-        <div class="attr-value">${(pred.box.score * 100).toFixed(1)}%</div>
+        <div class="attr-value">${pct(pred.box.score)}</div>
+      </div>
+      <div class="debug-grid">
+        <div class="attr-item"><div class="attr-label">Margin</div><div class="attr-value">${pct(asem.margin)}</div></div>
+        <div class="attr-item"><div class="attr-label">s_ood</div><div class="attr-value">${asem.s_ood.toFixed(3)}</div></div>
+        <div class="attr-item"><div class="attr-label">Q_t dominant</div><div class="attr-value">${escapeHtml(asem.quality.dominant)}</div></div>
+        <div class="attr-item"><div class="attr-label">Center res</div><div class="attr-value">${asem.quality.center_res.toFixed(3)}</div></div>
+        <div class="attr-item"><div class="attr-label">Thresholds</div><div class="attr-value">${escapeHtml(asem.thresholds_version)}</div></div>
       </div>`;
     predictionsDiv.appendChild(card);
   });
+}
+
+function renderInferenceError(img, err) {
+  dropZone.classList.add("hidden");
+  resultsSection.classList.remove("hidden");
+  const ctx = outputCanvas.getContext("2d");
+  outputCanvas.width = img.width;
+  outputCanvas.height = img.height;
+  ctx.drawImage(img, 0, 0);
+  predictionsDiv.innerHTML = `
+    <div class="prediction-card">
+      <div class="decision-banner abstain">
+        <span class="decision-status">ABSTAIN</span>
+        <span class="decision-reason">rev3_startup_or_calibration_error</span>
+      </div>
+      <p class="guidance">${escapeHtml(err.message || "Rev-3 inference failed loudly; check thresholds and calibration.")}</p>
+    </div>`;
 }
 
 // --- UI Helpers --------------------------------------------------------------
@@ -304,6 +521,20 @@ function showLoading(text) {
   loadingOverlay.classList.remove("hidden");
 }
 function hideLoading() { loadingOverlay.classList.add("hidden"); }
+
+async function maybeLogHardcase(trace, decision) {
+  if (!hardcaseStore || !trace || !decision) return;
+  if (!window.AsemHardcase.shouldLogHardcase(decision, THRESHOLDS)) return;
+  try {
+    const result = await hardcaseStore.addTrace(trace, null);
+    if (result.stored && hardcaseStatus) {
+      hardcaseStatus.textContent = "Hard case saved locally";
+    }
+  } catch (err) {
+    if (hardcaseStatus) hardcaseStatus.textContent = "Hard-case save skipped";
+    console.warn("Hard-case save skipped:", err);
+  }
+}
 
 function handleImage(source) {
   if (!detectorSession || !classifierSession || !CLASS_NAMES || !THRESHOLDS) {
