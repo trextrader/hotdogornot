@@ -71,15 +71,17 @@ file as each item completes.
 
 ## Stage 4 — quality.js: Q_t estimator
 
-- [ ] Create `exports/web/asem/quality.js`
-- [ ] `roi_scale = bbox_area/frame_area`; fail `< q.roi_scale_min` → dominant `low_roi_scale`
-- [ ] `blur_var` (variance-of-Laplacian); fail `< q.blur_var_min` → `blur`
-- [ ] `glare_frac` (near-saturated); fail `> q.glare_frac_max` → `glare`
-- [ ] `oblique_proxy`; fail `> q.oblique_proxy_max` → `oblique`/`poor_face_visibility`
-- [ ] `center_res` computed **but does NOT set `q_low`** (Gap C)
-- [ ] `q_low` driven only by blur/glare/oblique/roi_scale; dominant priority `blur>glare>oblique>low_roi_scale`
-- [ ] No pin/socket inference anywhere in `quality.js`
-- [ ] `estimateQuality(...)` returns the full struct
+- [x] Create `exports/web/asem/quality.js`
+- [x] `roi_scale = bbox_area/frame_area`; fail `< q.roi_scale_min` → dominant `low_roi_scale`
+- [x] `blur_var` (variance-of-Laplacian); fail `< q.blur_var_min` → `blur`
+- [x] `glare_frac` (near-saturated); fail `> q.glare_frac_max` → `glare`
+- [x] `oblique_proxy`; fail `> q.oblique_proxy_max` → `oblique`/`poor_face_visibility`
+- [x] `center_res` computed **but does NOT set `q_low`** (Gap C)
+  - Check: `node --test tests/asem/quality.test.js` verifies low `center_res` is reported while `q_low=false` when other quality gates pass.
+- [x] `q_low` driven only by blur/glare/oblique/roi_scale; dominant priority `blur>glare>oblique>low_roi_scale`
+- [x] No pin/socket inference anywhere in `quality.js`
+- [x] `estimateQuality(...)` returns the full struct
+  - Check: direct Node tests cover acceptable ROI, blur, glare, small ROI, oblique, low-center-resolution, and dominant-priority behavior.
 
 ## Stage 5 — decision.js: Stage-0 controller
 
