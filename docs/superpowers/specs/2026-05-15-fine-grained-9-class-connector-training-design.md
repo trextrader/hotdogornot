@@ -1,4 +1,8 @@
-# Design: Fine-grained 9-class connector training (training-side)
+# Design: Fine-grained 10-class connector training (training-side)
+
+> Retitled 2026-05-17: class set was reconciled to **10** (SMA-M added 2026-05-16).
+> The "9" references in the Problem section below are preserved as a historical
+> snapshot of the class-list disagreement as it stood on 2026-05-15.
 
 - Date: 2026-05-15
 - Status: Approved design, pending implementation plan
