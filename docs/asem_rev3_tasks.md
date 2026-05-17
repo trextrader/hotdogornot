@@ -29,6 +29,7 @@ file as each item completes.
 - [~] Confirm current debug APK still builds (unchanged)
   - Needs review: final/debug APK build is left for the project owner per Android build constraint; Rev-3 prep will document the local command.
 - [x] Commit baseline note (no functional change)
+  - Note: local stage commits are being created. Push to `origin/master` is blocked by GitHub 403 for the current credentials; pushes to `trextrader/master` succeed.
 
 ## Stage 1 — thresholds.json + fail-loud loader
 
@@ -39,6 +40,7 @@ file as each item completes.
   - Note: `app.js` blocks startup on threshold load/validation failure and shows the error in the model status badge.
 - [x] Remove every hardcoded decision constant from `app.js` (`box_min/accept/margin/unsupported/q.*`)
   - Note: detector filtering now uses validated `THRESHOLDS.box_min`; no Rev-3 decision constants are hardcoded in `app.js`.
+  - Check: `CONF_THRESHOLD` was removed from `exports/web/app.js`; detector confidence gating comes from `thresholds.json`.
 
 ## Stage 2 — support.js: calibration + logit-energy s_ood
 
@@ -47,18 +49,25 @@ file as each item completes.
 - [x] `logsumexp(values)` — max-subtraction stable
 - [x] `energyScoreFromLogits(logits,T)` = `-T*logsumexp(logits/T)`
 - [x] `normalizeEnergyToSOod(energy,calibration)` — minmax→`clamp01`; **throws if percentiles null/missing**
+  - Check: direct Node invocation with `energy_in_support_p05/p95:null` throws before scoring proceeds.
 - [x] `computeSupportScore(...)` — logit-energy baseline; never requires embedding; returns `{s_ood,method:"energy",energy}`
 - [x] Sign contract comment + behavior: larger `s_ood` = more unsupported
   - Note: `sOodFromInSupportProbability(0.9)` returns `0.1`; decision code must reject only when `s_ood >= thresholds.unsupported`.
 
 ## Stage 3 — Support-gate calibration measurement (gap-closer, hard dependency)
 
-- [ ] Create `scripts/fit_support_energy.py`
-- [ ] Run current classifier ONNX over `data/labeled/embedder/**`; collect logit-energy per image
-- [ ] Compute in-support energy `p05`/`p95`; choose documented `unsupported` operating point
-- [ ] Write measured percentiles into `exports/web/thresholds.json` (non-null)
-- [ ] Emit auditable report to `reports/` (energy stats, chosen percentiles, curated-set `s_ood` min/median/max)
-- [ ] Deterministic re-run verified; values committed (**must precede Stage 12**)
+- [x] Create `scripts/fit_support_energy.py`
+  - Note: script is Colab/Kaggle-ready with ONNX Runtime provider selection, locked-label validation, deterministic sorted image traversal, threshold update option, and JSON report output.
+- [~] Run current classifier ONNX over `data/labeled/embedder/**`; collect logit-energy per image
+  - Needs review: full curated-set inference is a cloud/T4 calibration step per model-work constraint; do not run heavy dataset inference locally.
+- [~] Compute in-support energy `p05`/`p95`; choose documented `unsupported` operating point
+  - Needs review: requires cloud script output before non-null calibrated values can be accepted.
+- [~] Write measured percentiles into `exports/web/thresholds.json` (non-null)
+  - Needs review: `thresholds.json` intentionally still has `null` support percentiles until cloud calibration output is applied.
+- [~] Emit auditable report to `reports/` (energy stats, chosen percentiles, curated-set `s_ood` min/median/max)
+  - Needs review: report is produced by `python scripts/fit_support_energy.py --write-thresholds` in Colab/Kaggle.
+- [~] Deterministic re-run verified; values committed (**must precede Stage 12**)
+  - Needs review: script compilation/help path verified locally; deterministic full rerun waits on cloud calibration.
 
 ## Stage 4 — quality.js: Q_t estimator
 
