@@ -8,21 +8,23 @@
     "2.92mm-F",
     "3.5mm-M",
     "3.5mm-F",
-    "SMA-F"
+    "SMA-F",
+    "SMA-M"
   ],
   "input_size": 384,
   "architecture": "efficientnet_v2_s",
-  "n_train_samples": 168,
-  "n_val_samples": 28,
+  "n_train_samples": 495,
+  "n_val_samples": 140,
   "class_counts": {
-    "1.85mm-M": 28,
-    "1.85mm-F": 36,
-    "2.4mm-M": 16,
-    "2.4mm-F": 10,
-    "2.92mm-M": 16,
-    "2.92mm-F": 21,
-    "3.5mm-M": 29,
-    "3.5mm-F": 28,
-    "SMA-F": 12
+    "1.85mm-M": 86,
+    "1.85mm-F": 82,
+    "2.4mm-M": 62,
+    "2.4mm-F": 59,
+    "2.92mm-M": 54,
+    "2.92mm-F": 66,
+    "3.5mm-M": 70,
+    "3.5mm-F": 62,
+    "SMA-F": 54,
+    "SMA-M": 40
   }
 }

@@ -1,10 +1,10 @@
 {
-  "version": 2,
+  "version": 3,
   "weights_filename": "weights.pt",
   "weights_onnx_filename": "classifier.onnx",
   "labels_filename": "labels.json",
-  "weights_sha256": "65aaab9a4d092e05a0f6c93c8dad1da433e6fe25993827798e25ed61360dec6f",
-  "weights_onnx_sha256": "3d91de7b1fb29ad52688e60d2c744dd895d90735fa160ea6bd626180411d9412",
-  "labels_sha256": "e48eaac7f15c2fb11e4c52d6f5762e800c9389cf6892e8a535640cccb3b2908f",
-  "trained_at": "2026-05-16T16:51:03.008330+00:00"
+  "weights_sha256": "e4d466b8b324fa21abc214efa01a8e25910948a85b7c2a4298581d506584d541",
+  "weights_onnx_sha256": "270e0e55331383e9a01ed8868dd4d1f00452d8296dcd6b04fbe25f551bf67491",
+  "labels_sha256": "03d11c343ce9d917221be1a832d1ddabdfcd106d57f0f1253c051c40b19343e9",
+  "trained_at": "2026-05-17T04:23:27.353018+00:00"
 }
