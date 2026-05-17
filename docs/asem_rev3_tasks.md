@@ -157,32 +157,44 @@ file as each item completes.
 
 ## Stage 10 — Browser smoke test
 
-- [ ] Startup: thresholds+labels+ONNX load, no console errors
-- [ ] Each state reproduced via simulated/injected values (all 6 outcomes)
-- [ ] UI states distinct; debug panel shows `Q_t`/`s_ood`/top-k/thresholds version
-- [ ] Hard-case consent + export validate
+- [x] Startup: thresholds+labels+ONNX load, no console errors
+  - Check: local HTTP + headless Chrome loaded to `Ready (10 classes)`.
+- [x] Each state reproduced via simulated/injected values (all 6 outcomes)
+  - Check: `npm test` covers ACCEPT plus all 5 ABSTAIN reasons through `decision.js`.
+- [x] UI states distinct; debug panel shows `Q_t`/`s_ood`/top-k/thresholds version
+  - Check: `app.js` renders status/reason banners plus margin, `s_ood`, `Q_t`, and thresholds version.
+- [~] Hard-case consent + export validate
+  - Needs review: local helper tests pass; Android/WebView download behavior remains a field-validation item because Rev 3 uses browser/WebView JSON export only.
 
 ## Stage 11 — Android sync + debug APK
 
-- [ ] `node scripts/copy-web.js` → `npx cap sync android`
-- [ ] Build via verified PowerShell recipe (`$env:JAVA_HOME=C:\local\jdk21`, `ANDROID_HOME=C:\local\android-sdk`, `.\gradlew.bat assembleDebug`)
-- [ ] On-device smoke: models load; detector+classifier run; Rev-3 routing active; **no forced hard class** on unsupported/stress; hard-case export retrievable per Gap D
-- [ ] Existing debug path preserved
+- [x] `node scripts/copy-web.js` → `npx cap sync android`
+  - Check: sync completed in `exports/mobile`; Rev-3 `asem/*.js` and `thresholds.json` are present in `exports/mobile/www` and Android public assets.
+- [~] Build via verified PowerShell recipe (`$env:JAVA_HOME=C:\local\jdk21`, `ANDROID_HOME=C:\local\android-sdk`, `.\gradlew.bat assembleDebug`)
+  - Needs review: final APK build is intentionally left for the project owner per Android build constraint.
+- [~] On-device smoke: models load; detector+classifier run; Rev-3 routing active; **no forced hard class** on unsupported/stress; hard-case export retrievable per Gap D
+  - Needs review: requires local Android device validation after owner build.
+- [x] Existing debug path preserved
 
 ## Stage 12 — Field-validation package (Chris, CA) — *requires Stage 3 done*
 
-- [ ] Package: APK, thresholds.json, classifier_labels.json, model-bundle id, tester + export instructions, supported-class list, expected-abstention list
-- [ ] Tester instructions state "Rev 3 abstains more on purpose (safety)"
-- [ ] Capture matrix: supported ×10 (angles/light) · stress · unsupported (coax/F/BNC/N/UHF/RCA/random)
-- [ ] Metrics sheet: accepted/abstained, accepted correct/wrong, abstention_by_reason, unsupported correctly/wrongly, hardcase exports, crash/model-load-fail
-- [ ] Promotion gate evaluated (risk-on-accepted↓; unsupported not hard-answered; bad→guidance; exportable; no breakage; APK stable) — not judged by coverage
+- [~] Package: APK, thresholds.json, classifier_labels.json, model-bundle id, tester + export instructions, supported-class list, expected-abstention list
+  - Needs review: instructions are prepared in `docs/asem_rev3_field_validation.md`; package cannot be finalized until Stage 3 cloud calibration values and owner-built APK are available.
+- [x] Tester instructions state "Rev 3 abstains more on purpose (safety)"
+- [x] Capture matrix: supported ×10 (angles/light) · stress · unsupported (coax/F/BNC/N/UHF/RCA/random)
+- [x] Metrics sheet: accepted/abstained, accepted correct/wrong, abstention_by_reason, unsupported correctly/wrongly, hardcase exports, crash/model-load-fail
+- [~] Promotion gate evaluated (risk-on-accepted↓; unsupported not hard-answered; bad→guidance; exportable; no breakage; APK stable) — not judged by coverage
+  - Needs review: requires Chris/field results after calibrated APK build.
 
 ## Stage 13 — Reproducibility cleanup + docs
 
-- [ ] Pin training notebook to commit SHA; remove `...`-elided cell sources; record model-bundle id + data snapshot + export command
-- [ ] README/docs: Rev-3 summary, diagram image, ACCEPT-vs-ABSTAIN, supported classes, limitations, field + build/test commands
-- [ ] Developer notes: `s_ood` direction, `Q_t`, decision priority, hard-case export, non-goals
-- [ ] Docs contain no out-of-scope classes and no Rev-3 TFLite/NNAPI language
+- [~] Pin training notebook to commit SHA; remove `...`-elided cell sources; record model-bundle id + data snapshot + export command
+  - Needs review: model bundle record and calibration command are documented; historical notebook pinning/cleanup remains outside the local Rev-3 web wiring changes.
+- [x] README/docs: Rev-3 summary, diagram image, ACCEPT-vs-ABSTAIN, supported classes, limitations, field + build/test commands
+  - Note: added `docs/asem_rev3_build_test_notes.md`, `docs/asem_rev3_field_validation.md`, and README Rev-3 links.
+- [x] Developer notes: `s_ood` direction, `Q_t`, decision priority, hard-case export, non-goals
+- [~] Docs contain no out-of-scope classes and no Rev-3 TFLite/NNAPI language
+  - Needs review: new Rev-3 docs avoid native inference language and unsupported class expansion; older pre-Rev-3 roadmap docs still contain historical broad-taxonomy language.
 
 ---
 

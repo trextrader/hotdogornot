@@ -53,6 +53,19 @@ foundation:
 
 ## Current Implementation Status
 
+- ASEM Rev 3 safety/evidence routing is implemented in the web bundle:
+  thresholds, calibrated softmax, logit-energy support scoring, `Q_t`
+  capture-quality routing, the Stage-0 decision controller, local-only
+  hard-case logging, acceptance tests, and the canonical Rev-3 diagram.
+- Rev 3 intentionally abstains when evidence is insufficient. Its success
+  metric is lower risk on accepted answers, increased safe abstention, and
+  better hard-case export for field learning.
+- Rev-3 implementation docs:
+  [`docs/asem_rev3_implementation.md`](docs/asem_rev3_implementation.md),
+  [`docs/asem_rev3_tasks.md`](docs/asem_rev3_tasks.md),
+  [`docs/asem_rev3_build_test_notes.md`](docs/asem_rev3_build_test_notes.md),
+  [`docs/asem_rev3_field_validation.md`](docs/asem_rev3_field_validation.md).
+
 - Batches 1-10 scaffolded on `master`: taxonomy, annotation protocol,
   acceptance gates, instance schema, model registry, dataset audit,
   crop manifest, YOLO dataset builder, detector training scaffold,
