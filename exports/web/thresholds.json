@@ -4,7 +4,7 @@
   "box_min": 0.25,
   "accept": 0.85,
   "margin": 0.2,
-  "unsupported": 0.6,
+  "unsupported": 0.98,
   "q": {
     "blur_var_min": 60,
     "roi_scale_min": 0.08,
@@ -14,8 +14,8 @@
   },
   "support_calibration": {
     "method": "energy_minmax",
-    "energy_in_support_p05": null,
-    "energy_in_support_p95": null
+    "energy_in_support_p05": -4.505515817008005,
+    "energy_in_support_p95": -2.9890584422356805
   },
   "hardcase_accept_sample_rate": 0.05,
   "calibration_T": 1

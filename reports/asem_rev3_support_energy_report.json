@@ -1,0 +1,54 @@
+{
+  "schema_version": "asem_rev3_support_energy_report_v1",
+  "model": "exports/web/models/classifier.onnx",
+  "dataset": "data/labeled/embedder",
+  "labels": "exports/web/models/classifier_labels.json",
+  "thresholds": "exports/web/thresholds.json",
+  "providers": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+  ],
+  "input_size": 384,
+  "calibration_T": 1.0,
+  "image_count": 635,
+  "class_order": [
+    "1.85mm-M",
+    "1.85mm-F",
+    "2.4mm-M",
+    "2.4mm-F",
+    "2.92mm-M",
+    "2.92mm-F",
+    "3.5mm-M",
+    "3.5mm-F",
+    "SMA-F",
+    "SMA-M"
+  ],
+  "energy": {
+    "count": 635,
+    "min": -4.916447858089306,
+    "p05": -4.505515817008005,
+    "p25": -4.199907747333175,
+    "median": -3.9002350829084795,
+    "p75": -3.5253127112532257,
+    "p95": -2.9890584422356805,
+    "max": -2.447419625906186,
+    "mean": -3.836490642534833,
+    "std": 0.47277672821804734
+  },
+  "chosen_percentiles": {
+    "energy_in_support_p05": -4.505515817008005,
+    "energy_in_support_p95": -2.9890584422356805
+  },
+  "normalized_s_ood": {
+    "min": 0.0,
+    "median": 0.3991412776705315,
+    "max": 1.0,
+    "unsupported_threshold": 0.98,
+    "curated_fraction_at_or_above_unsupported": 0.05511811023622047
+  },
+  "notes": [
+    "s_ood is unsupported risk: larger means more likely out of support.",
+    "Percentiles are measured on the locked in-support curated set only.",
+    "Field validation must ratify the unsupported threshold on real unsupported/stress captures."
+  ]
+}

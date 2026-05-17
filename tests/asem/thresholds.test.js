@@ -11,10 +11,24 @@ function validThresholds() {
   return JSON.parse(fs.readFileSync("exports/web/thresholds.json", "utf8"));
 }
 
-test("valid thresholds.json validates with null support percentiles before Stage 3", () => {
+test("committed thresholds.json validates with Stage-3 calibrated percentiles", () => {
   const thresholds = validateThresholds(validThresholds());
   assert.equal(thresholds.schema_version, "asem_rev3_thresholds_v1");
-  assert.equal(thresholds.support_calibration.energy_in_support_p05, null);
+  const { energy_in_support_p05: p05, energy_in_support_p95: p95 } =
+    thresholds.support_calibration;
+  assert.equal(Number.isFinite(p05), true, "p05 must be measured (non-null) post Stage-3");
+  assert.equal(Number.isFinite(p95), true, "p95 must be measured (non-null) post Stage-3");
+  assert.equal(p05 < p95, true, "p05 must be < p95");
+});
+
+test("validator still tolerates both-null percentiles (pre-Stage-3 bootstrap)", () => {
+  const t = validThresholds();
+  t.support_calibration = {
+    method: "energy_minmax",
+    energy_in_support_p05: null,
+    energy_in_support_p95: null,
+  };
+  assert.equal(validateThresholds(t).support_calibration.energy_in_support_p05, null);
 });
 
 test("malformed threshold values fail validation loudly", () => {
