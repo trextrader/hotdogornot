@@ -373,7 +373,14 @@ def train(config: TrainConfig) -> dict:
         eta_min=1e-6,
     )
 
+    weights_path = config.out_dir / "weights.pt"
+    weights_last_path = config.out_dir / "weights_last.pt"
+    labels_path = config.out_dir / "labels.json"
+    metrics_path = config.out_dir / "metrics.json"
+
     history: list[EpochMetrics] = []
+    best_val_acc = -1.0
+    best_epoch = 0
     for epoch in range(1, config.epochs + 1):
         train_loss, train_acc = _run_epoch(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc = _run_epoch(model, val_loader, criterion, None, device)
@@ -389,12 +396,24 @@ def train(config: TrainConfig) -> dict:
             f"train_loss={train_loss:.3f} train_acc={train_acc:.3f}  "
             f"val_loss={val_loss:.3f} val_acc={val_acc:.3f}"
         )
+        # Crash-safety: persist metrics + a rolling 'last' checkpoint every
+        # epoch so a killed session (e.g. a Kaggle draft-session drop)
+        # doesn't throw away the whole run.
+        metrics_path.write_text(json.dumps(
+            {"history": [asdict(m) for m in history]}, indent=2))
+        torch.save(model.state_dict(), weights_last_path)
+        # Keep-best: weights.pt always tracks the best-val-acc epoch (not
+        # the last) — it is what export_onnx / eval / the app load.
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            best_epoch = epoch
+            torch.save(model.state_dict(), weights_path)
 
-    weights_path = config.out_dir / "weights.pt"
-    labels_path = config.out_dir / "labels.json"
-    metrics_path = config.out_dir / "metrics.json"
-
-    torch.save(model.state_dict(), weights_path)
+    print(
+        f"[train] best epoch {best_epoch}/{config.epochs} "
+        f"val_acc={best_val_acc:.3f} -> saved {weights_path.name} "
+        f"(rolling last -> {weights_last_path.name})"
+    )
     labels_path.write_text(json.dumps({
         "class_names": config.class_names,
         "input_size": config.input_size,
@@ -421,11 +440,10 @@ def train(config: TrainConfig) -> dict:
     # Snapshot versioned files + refresh the OTA manifest. Relay reads
     # manifest.json to advertise a new version to the app.
     from rfconnectorai.classifier.versioning import bump_version
-    final_val_acc = history[-1].val_acc if history else None
     bump_version(
         model_dir=config.out_dir,
         weights_path=weights_path,
-        val_acc=final_val_acc,
+        val_acc=best_val_acc if history else None,
         n_train_samples=len(train_idx),
     )
 
