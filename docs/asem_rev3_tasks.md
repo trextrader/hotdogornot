@@ -85,13 +85,15 @@ file as each item completes.
 
 ## Stage 5 — decision.js: Stage-0 controller
 
-- [ ] Create `exports/web/asem/decision.js` (pure: no DOM/camera/localStorage/ONNX)
-- [ ] `topK`/`top2` deterministic (prob desc; tie → lower label index); validate lengths/finite
-- [ ] `requiredEvidenceVisible(_c1,quality,thresholds)` = `center_res >= q.center_res_min`; **no class/pin/socket logic**
-- [ ] `decide()` exact policy: box → q_low(focus/angle) → support → required-visible(→`need_better_focus`, never `ambiguous`) → accept(conf&margin) → `ambiguous`
-- [ ] Guidance map for all 6 reasons
-- [ ] ACCEPT/ABSTAIN payloads per design output contract; trace attached
-- [ ] No hardcoded thresholds; no out-of-scope labels
+- [x] Create `exports/web/asem/decision.js` (pure: no DOM/camera/localStorage/ONNX)
+- [x] `topK`/`top2` deterministic (prob desc; tie → lower label index); validate lengths/finite
+- [x] `requiredEvidenceVisible(_c1,quality,thresholds)` = `center_res >= q.center_res_min`; **no class/pin/socket logic**
+- [x] `decide()` exact policy: box → q_low(focus/angle) → support → required-visible(→`need_better_focus`, never `ambiguous`) → accept(conf&margin) → `ambiguous`
+  - Check: `node --test tests/asem/decision.test.js` covers all Stage-0 decision branches and required-visible failure.
+- [x] Guidance map for all 6 reasons
+- [x] ACCEPT/ABSTAIN payloads per design output contract; trace attached
+- [x] No hardcoded thresholds; no out-of-scope labels
+  - Check: decision tests scan `decision.js` and decision fixtures for out-of-scope labels and browser/ONNX dependencies.
 
 ## Stage 6 — hardcase.js: trace + local logging + export
 
