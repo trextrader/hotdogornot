@@ -14,14 +14,21 @@ file as each item completes.
 
 ## Stage 0 — Preflight audit & baseline preservation
 
-- [ ] Confirm canonical source `exports/web/`; sync via `scripts/copy-web.js` + `npx cap sync android`; runtime = Capacitor WebView + ONNX Runtime Web
-- [ ] Record the **real** detector/classifier ONNX filenames on disk (expected `detector.onnx` / `classifier.onnx`) — used verbatim by the Stage-6 trace
-- [ ] Confirm classifier output is logits (preferred) or probabilities (document fallback)
-- [ ] Locate prediction + UI code in `app.js`; enumerate legacy fields (`class`, `confidence`, `bbox`, `/predict`-style)
-- [ ] **Gap A:** audit `scripts/copy-web.js`; extend it so `exports/web/asem/**` + `thresholds.json` are copied into `www`
-- [ ] **Gap B:** determine WebView JS load scheme; decide `asem/*.js` module format that is both browser-loadable and Node-test importable; record it
-- [ ] Confirm current debug APK still builds (unchanged)
-- [ ] Commit baseline note (no functional change)
+- [x] Confirm canonical source `exports/web/`; sync via `scripts/copy-web.js` + `npx cap sync android`; runtime = Capacitor WebView + ONNX Runtime Web
+  - Note: canonical source is `exports/web/`; Capacitor project lives in `exports/mobile/`; repo-root `scripts/copy-web.js` mirrors into `exports/mobile/www/`.
+- [x] Record the **real** detector/classifier ONNX filenames on disk (expected `detector.onnx` / `classifier.onnx`) — used verbatim by the Stage-6 trace
+  - Note: real filenames are `models/detector.onnx` and `models/classifier.onnx`.
+- [x] Confirm classifier output is logits (preferred) or probabilities (document fallback)
+  - Note: classifier ONNX output is `logits` with shape `[1,10]`.
+- [x] Locate prediction + UI code in `app.js`; enumerate legacy fields (`class`, `confidence`, `bbox`, `/predict`-style)
+  - Note: current browser output is UI-only; legacy prediction fields to preserve are class label/confidence/top-k plus bbox coordinates and detector box confidence from `renderResults()`/`classifyDetection()`.
+- [x] **Gap A:** audit `scripts/copy-web.js`; extend it so `exports/web/asem/**` + `thresholds.json` are copied into `www`
+  - Note: repo-root recursive copy script added and verified with `node scripts/copy-web.js`.
+- [x] **Gap B:** determine WebView JS load scheme; decide `asem/*.js` module format that is both browser-loadable and Node-test importable; record it
+  - Note: existing WebView uses plain scripts. Rev-3 `asem/*.js` will use a small UMD/CommonJS wrapper so app.js can read `window.Asem*` globals and Node tests can `require()` the same files.
+- [~] Confirm current debug APK still builds (unchanged)
+  - Needs review: final/debug APK build is left for the project owner per Android build constraint; Rev-3 prep will document the local command.
+- [x] Commit baseline note (no functional change)
 
 ## Stage 1 — thresholds.json + fail-loud loader
 
