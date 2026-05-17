@@ -1,7 +1,7 @@
 # Design: ASEM Rev 3 — Safety & Evidence-Routing Release
 
 - Date: 2026-05-17
-- Status: Approved design, pending implementation plan
+- Status: Approved with minor implementation-contract edits — pending implementation plan
 - Author of source proposal: Dr. T. Jerry Mahabub, Ph.D. (QMTF, Company Confidential)
 - Formal long-form + math: `docs/Adaptive Evidence Mesh for Near-Zero-Risk Connector Identification.pdf`
   (Appendix B/B1/B2). This document is the **engineering spec scoped to rev 3**; the PDF is the
@@ -34,6 +34,27 @@ The class set is the locked customer set of **10**: `1.85mm-M, 1.85mm-F, 2.4mm-M
 scope; generic RP-SMA / right-angle / bulkhead / board-mount variants are **not** part of
 this problem and must be removed from the canonical diagram (see §8).
 
+### 1.1 Canonical class labels (binding)
+
+Canonical labels must match classifier label order exactly:
+
+1. `1.85mm-M`
+2. `1.85mm-F`
+3. `2.4mm-M`
+4. `2.4mm-F`
+5. `2.92mm-M`
+6. `2.92mm-F`
+7. `3.5mm-M`
+8. `3.5mm-F`
+9. `SMA-F`
+10. `SMA-M`
+
+No UI, diagram, test, or decision code may introduce RP-SMA, right-angle, bulkhead,
+cable-end, board-mount, or any generic SMA mechanical variant in rev 3. Labels are used
+verbatim — no aliases, no case/format variants. The label-order source of truth remains
+`training/rfconnectorai/data/classes.py::class_names()`; rev-3 consumers read the order
+from the model bundle's `classifier_labels.json`, never hardcode it.
+
 ## 2. Target architecture (ASEM) — summary
 
 Adaptive Semantic Evidence Mesh: keep the flat detector+classifier as a fast **stage 0**,
@@ -56,7 +77,7 @@ data-backed capability roadmap.
 | D1 | **Rev 3 scope** = Stage-0 flat model + calibrated abstention + OOD/support gate (embedding-distance/energy v1) + hard-case logging loop. No probes, no multi-head, no scale workflow, no native rewrite. |
 | D2 | **Rev staging:** Rev 3 = safety/routing. Rev 4 = restored multi-head attribute refiner (existing scaffolding). Rev 5 = center + ring semantic probes (+ the native-vs-WebView gate, see D3). Rev 6 = thread/body-span/axial probes + guided recapture + scale-marker (ArUco) path. |
 | D3 | **Runtime:** Rev 3 stays Capacitor WebView + ONNX Runtime Web (WASM/WebGL). Rev 3 has no per-frame probe budget, so there is **zero runtime risk**. "Native (TFLite/NNAPI) rewrite vs stay WebView" is an explicit **rev-5 gate**, decided on *measured* ORT-Web probe latency, not guessed now. All TFLite/NNAPI language is removed from the canonical diagram. |
-| D4 | **Support gate v1** = calibrated embedding-distance / energy score over the *existing* trained classifier embedding (or energy over logits). Requires **no negative corpus to train**; trained on the full existing curated set. A corpus/classifier-trained support gate is a later rev, fed by the hard-case pool. |
+| D4 | **Support gate v1** = **logit-energy score is the mandatory baseline** (`-T·logsumexp(logits/T)`), with optional embedding-distance scoring *only if* the classifier ONNX already exposes the penultimate embedding. **Rev-3 implementation must not block on embedding export.** Requires **no negative corpus to train**; calibrated on the full existing curated set's score distribution. A corpus/classifier-trained support gate is a later rev, fed by the hard-case pool. |
 | D5 | **OOD validation path:** real-world support-gate / field validation is done by **Chris in California against the actual customer connectors**. Workflow: models trained → APK built → Chris side-loads on Android → tests on real connectors → returns results + hard captures. Rev 3 does not block on any data-acquisition task. |
 | D6 | **Acceptance policy:** one coherent stage-0 regime (§5). SPRT / log-odds (Λ_t) is reserved for the **sequential evidence loop** (rev 5+), *not* used as a redundant single-shot gate on the flat softmax. The PDF's strict τ_accept=0.995–0.999 is the *future full "nailed it"* target, **not** applied as-is to the rev-3 real-phone flat model. |
 | D7 | **Success metric reframed.** Rev 3 success = **risk-on-accepted ↓, abstention ↑, field telemetry ↑**. NOT "more forced predictions correct." The spec states plainly: *rev 3 will likely abstain more often than rev 2; that is the intended correction to forced incorrect classification, not a regression.* Accepted-coverage ↑ is a rev-4/5 outcome, after hard-case data improves the gate/refiner/probes. |
@@ -70,17 +91,38 @@ Pipeline (all in `exports/web/`, the canonical git-tracked source; mirrored to m
 
 ```
 camera frame
-  └─ detector (YOLO11n, single-class)         → bbox, box_conf
-       └─ [Q_t capture-quality estimate on ROI: blur/glare/angle/center-res/scale]
-            └─ flat classifier (EffNetV2-S)    → logits
-                 └─ temperature calibration    → calibrated π(c)
-                      └─ support score s_ood   → p(in_support) vs p(unsupported)
-                           └─ Stage-0 Decision Controller (§5)
-                                ├─ ACCEPT  → class + π + evidence/reason trace
-                                └─ ABSTAIN → reason ∈ {no_connector_found, unsupported_connector,
-                                              need_second_angle, need_better_focus, ambiguous}
-                                                 └─ Hard-Case Logging (§6)
+  └─ detector YOLO11n, single-class
+       → bbox, box_conf
+       └─ ROI crop
+            ├─ Q_t capture-quality estimate
+            │    → blur, glare, oblique proxy, center resolution, ROI scale
+            │
+            └─ flat classifier EffNetV2-S / ONNX Runtime Web
+                 → logits
+                 → temperature calibration
+                 → calibrated π(c)
+                 → support score s_ood  (logit-energy baseline; optional embedding distance)
+                      └─ Stage-0 Decision Controller (§5)
+                           ├─ ACCEPT
+                           │    → class + calibrated probability + margin + trace
+                           └─ ABSTAIN
+                                → no_connector_found
+                                → need_better_focus
+                                → need_second_angle
+                                → unsupported_connector
+                                → ambiguous
+                                     └─ Hard-Case Logging Loop (§6)
 ```
+
+`s_ood` may be *computed from* model outputs (logits/energy and/or embedding distance),
+but its **decision position is before hard acceptance** — the Stage-0 controller checks
+support before it will emit any class.
+
+**`s_ood` contract:** `s_ood` is an **unsupported / out-of-distribution score where
+larger means "more likely unsupported."** It is **not** `p(in_support)`. If an
+implementation computes `p_in_support`, it MUST convert before the decision:
+`s_ood = 1.0 - p_in_support`. Reversing this sign makes the app reject good captures and
+accept bad ones — this is a hard implementation contract, not a stylistic note.
 
 Components to build in rev 3:
 
@@ -104,6 +146,26 @@ Components to build in rev 3:
 7. **UI / output states** — render ACCEPT vs each ABSTAIN reason with actionable guidance
    ("move closer", "improve focus", "show the center", "this connector isn't supported").
 
+### 4.1 Rev-3 deliverables (exact artifacts)
+
+The implementation plan maps one-to-one onto these; filenames are binding so tasks need
+not infer them:
+
+1. `exports/web/thresholds.json` — all tunables (§7), includes fitted `calibration_T`.
+2. `exports/web/asem/decision.js` — pure Stage-0 Decision Controller (`decide()`), no I/O.
+3. `exports/web/asem/quality.js` — `Q_t` capture-quality estimator (classical CV).
+4. `exports/web/asem/support.js` — `s_ood` scoring helper (logit-energy mandatory).
+5. `exports/web/asem/hardcase.js` — local hard-case capture/consent/tag/export module.
+6. `exports/web/app.js` — wired to the above; legacy `/predict`-style fields preserved.
+7. `docs/fulldetector_active_visual_interrogation_system.dot` — revised per §8.
+8. `docs/fulldetector_active_visual_interrogation_system.svg` — re-rendered.
+9. `docs/fulldetector_active_visual_interrogation_system.png` — re-rendered hi-res.
+10. `docs/asem_rev3_implementation.md` — the implementation plan (from writing-plans).
+11. `docs/asem_rev3_tasks.md` — the task checklist.
+
+Calibration may live as `calibration_T` embedded in `thresholds.json` (preferred — one
+bundle file) rather than a separate `calibration.json`.
+
 ## 5. Rev-3 acceptance policy (one coherent regime)
 
 Stage-0 only. SPRT is **not** here (D6).
@@ -113,16 +175,28 @@ decide(box_conf, Q_t, π, s_ood, thr):
     if box_conf < thr.box_min:
         return ABSTAIN(no_connector_found)
 
-    if Q_t.q_low:                      # blur / glare / oblique / center unreadable
-        return ABSTAIN(need_better_focus | need_second_angle)   # pick by dominant Q_t cause
+    # quality failures routed BEFORE semantic uncertainty (priority below)
+    if Q_t.q_low:
+        if Q_t.dominant in {blur, glare, low_center_res}:
+            return ABSTAIN(need_better_focus)
+        else:                                  # oblique angle / poor face visibility
+            return ABSTAIN(need_second_angle)
 
     if s_ood >= thr.unsupported:
         return ABSTAIN(unsupported_connector)
 
-    c1, c2 = top2(π)
-    if π[c1] >= thr.accept
-       and (π[c1] - π[c2]) >= thr.margin
-       and required_evidence_visible(c1, Q_t):     # rev-3: coarse — center-region readable
+    c1, c2 = top2(π)                           # stable, deterministic tie-break
+
+    # rev-3 required_evidence_visible is COARSE: it answers ONLY
+    # "is the crop good enough to make ANY gender/contact claim?"
+    # It MUST NEVER attempt to infer pin vs socket (that is the rev-5 center probe).
+    if not required_evidence_visible(c1, Q_t):
+        if Q_t.dominant in {blur, glare, low_center_res}:
+            return ABSTAIN(need_better_focus)
+        else:
+            return ABSTAIN(need_second_angle)  # NOT ambiguous
+
+    if π[c1] >= thr.accept and (π[c1] - π[c2]) >= thr.margin:
         return ACCEPT(c1, π, trace)
 
     return ABSTAIN(ambiguous, alternatives=topk(π))
@@ -139,6 +213,24 @@ decide(box_conf, Q_t, π, s_ood, thr):
 - Rationale for the order: cheapest/safest rejections first (no ROI → bad frame →
   out-of-support → ambiguous), so the model never "reasons" on a frame that can't support
   a decision.
+
+### 5.1 Deterministic abstention priority
+
+When more than one abstention condition could fire, the controller resolves
+deterministically in this order (highest first):
+
+1. `no_connector_found`   — `box_conf < box_min`
+2. `need_better_focus`    — `Q_t` dominant cause ∈ {blur, glare, low center resolution}
+3. `need_second_angle`    — `Q_t` dominant cause ∈ {oblique angle, poor face visibility}
+4. `unsupported_connector`— quality acceptable but `s_ood ≥ unsupported`
+5. `ambiguous`            — quality acceptable, in-support, but `accept`/`margin` fail
+
+Quality failures are routed **before** semantic OOD calls **by design**: an `s_ood`
+score computed on a blurred/oblique frame is itself untrustworthy, so a bad frame must
+be rejected as a capture problem before the model is allowed to assert "unsupported."
+A failed coarse `required_evidence_visible` maps to `need_better_focus` /
+`need_second_angle` (by dominant `Q_t` cause) — **never** to `ambiguous` — so the user
+gets an actionable recapture prompt instead of a dead-end "uncertain."
 
 SPRT / Λ_t = log(π_t(c\*)/π_t(c²)) with ε-stabilization, and the strict combined
 acceptance stack, are specified in PDF Appendix B2 and become active only when there are
@@ -162,6 +254,64 @@ candidate. This is the data flywheel for rev 4/5 — it is a component, not an a
   guards specimen leakage).
 - **Retraining:** the hard-case pool becomes the primary dataset for the rev-4 refiner
   recalibration and rev-5 probe training, grouped by specimen + capture session.
+
+### 6.1 `decision_trace` schema (binding, `asem_rev3_trace_v1`)
+
+Every logged case stores exactly this structure so the pool is directly ingestible by
+the dataset builder later:
+
+```jsonc
+{
+  "schema_version": "asem_rev3_trace_v1",
+  "timestamp_utc": "2026-05-17T00:00:00Z",
+  "app_version": "rev3",
+  "model_bundle_id": "string",
+  "detector_model": "yolo11n_single_connector.onnx",
+  "classifier_model": "effnetv2s_10class.onnx",
+  "thresholds_version": "string",
+
+  "frame": {
+    "full_frame_saved": true,
+    "roi_saved": true,
+    "frame_width": 0,
+    "frame_height": 0,
+    "roi_bbox_xyxy": [0, 0, 0, 0],
+    "box_conf": 0.0
+  },
+
+  "quality": {
+    "blur_var": 0.0,
+    "glare_frac": 0.0,
+    "roi_scale": 0.0,
+    "center_res": 0.0,
+    "oblique_proxy": 0.0,
+    "dominant_low_quality_reason": "none"
+  },
+
+  "classification": {
+    "top1": "2.4mm-M",
+    "top1_prob": 0.0,
+    "top2": "2.4mm-F",
+    "top2_prob": 0.0,
+    "margin": 0.0,
+    "topk": [ { "class": "2.4mm-M", "prob": 0.0 } ]
+  },
+
+  "support": {
+    "s_ood": 0.0,
+    "method": "energy",
+    "unsupported_threshold": 0.60
+  },
+
+  "decision": {
+    "status": "ACCEPT_OR_ABSTAIN",
+    "reason": "ambiguous",
+    "user_guidance": "Move closer and show the connector center clearly."
+  },
+
+  "thresholds_snapshot": {}
+}
+```
 
 ## 7. `thresholds.json` contract
 
@@ -229,6 +379,28 @@ abstention rate (by reason), risk-on-accepted, OOD rejection accuracy (validated
 Chris), AURC / risk-coverage. Rev-3 ships when: on tiers 2–3, **risk-on-accepted is below
 target and the hotel-TV-class capture routes to `unsupported`/abstain rather than a hard
 answer** — even if accepted coverage is low.
+
+### 9.1 Minimum rev-3 tests (acceptance)
+
+1. `decide()` returns `no_connector_found` when `box_conf < box_min`.
+2. `decide()` returns `need_better_focus` when blur/glare/center-resolution quality fails.
+3. `decide()` returns `need_second_angle` when the dominant `Q_t` failure is oblique/face.
+4. `decide()` returns `unsupported_connector` when `s_ood ≥ unsupported` and `Q_t` is OK.
+5. `decide()` returns `ACCEPT` **only** when box, `Q_t`, support, `accept`, `margin`, and
+   coarse required-visible gates all pass.
+6. `decide()` returns `ambiguous` when support and quality are OK but prob/margin fail.
+7. A failed coarse `required_evidence_visible` returns `need_better_focus` /
+   `need_second_angle`, **never** `ambiguous`.
+8. `top2()` is stable and deterministic for ties.
+9. Missing or malformed `thresholds.json` produces a visible startup error, **not**
+   silent defaults.
+10. Hard-case traces conform to `asem_rev3_trace_v1` (model ids, thresholds snapshot,
+    reason, top-k, `Q_t`, `s_ood`).
+11. No rev-3 UI string, diagram node, test fixture, or decision branch contains an
+    out-of-scope class (§1.1).
+12. Legacy `/predict`-style fields remain present and unchanged in the output.
+13. `s_ood` sign contract holds: a synthetic `p_in_support=0.9` input yields
+    `s_ood≈0.1` and does **not** trip `unsupported`.
 
 ## 10. Non-goals for rev 3 (explicit)
 
